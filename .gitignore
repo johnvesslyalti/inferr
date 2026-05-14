@@ -1,14 +1,33 @@
 # dependencies
 node_modules/
+pnpm-lock.yaml
 
 # build
 dist/
+build/
+.next/
+out/
 
 # env
 .env
+.env.local
+.env.*.local
 
 # logs
 *.log
+logs/
+*.log*
 
-# OS
+# testing
+coverage/
+
+# misc
 .DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# turbo
+.turbo/
