@@ -79,7 +79,7 @@ export default function Home() {
             </h1>
 
             <p className={`${styles.subheadline} reveal`}>
-              AI Developer Feed scrapes Hacker News and Dev.to every day, summarizes each article in 3 lines using Claude, and surfaces only what's relevant to your stack — automatically.
+              AI Developer Feed scrapes Hacker News and Dev.to every day, summarizes each article in 3 lines using gpt-4o-mini, and surfaces only what's relevant to your stack — automatically.
             </p>
 
             <form onSubmit={handleSubscribe} className={`${styles.signupForm} reveal`}>
@@ -109,7 +109,7 @@ export default function Home() {
               </div>
               <div className={styles.terminalBody}>
                 <div className={styles.terminalMeta}>
-                  <span className={styles.source}>HN · 847 pts</span>
+                  <span className={styles.source}>HN · 847 pts · 94% match</span>
                 </div>
                 <div className={styles.terminalTitle}>
                   Building RAG systems with pgvector and LLMs
@@ -120,7 +120,6 @@ export default function Home() {
                   <p>Real-world example: 50K docs, {'<'}1s queries, {`$${0.02}`} cost per summary.</p>
                 </div>
                 <div className={styles.terminalFooter}>
-                  <span className={styles.relevance}>94% match</span>
                   <span className={styles.tags}>NestJS · RAG · PostgreSQL</span>
                 </div>
               </div>
@@ -133,26 +132,17 @@ export default function Home() {
       {/* Problem Section */}
       <section className={styles.problemSection}>
         <div className={styles.problemContent}>
-          <h2 className={`${styles.sectionLabel} reveal`}>The developer content problem</h2>
+          <h2 className={`${styles.sectionLabel} reveal`} style={{ fontSize: '2.5rem', marginBottom: '3rem' }}>Here's the actual problem.</h2>
 
-          <div className={styles.problemGrid}>
-            <div className={`${styles.problemCard} reveal`}>
-              <div className={styles.problemIcon}>◆</div>
-              <h3>The firehose</h3>
-              <p>Hacker News, Dev.to, GitHub Trending. Hundreds of posts daily. Impossible to keep up.</p>
-            </div>
-
-            <div className={`${styles.problemCard} reveal`}>
-              <div className={styles.problemIcon}>◇</div>
-              <h3>Irrelevant noise</h3>
-              <p>80% of content has nothing to do with your stack. You're reading React posts when you ship NestJS.</p>
-            </div>
-
-            <div className={`${styles.problemCard} reveal`}>
-              <div className={styles.problemIcon}>■</div>
-              <h3>Context switching</h3>
-              <p>12 browser tabs open. 0 articles actually finished. Your flow state? Gone.</p>
-            </div>
+          <div className={`reveal`} style={{ maxWidth: '800px', lineHeight: '1.8', fontSize: '1.1rem' }}>
+            <p>
+              Hacker News posts 300+ stories a day. Dev.to adds hundreds more.
+              80% of it has nothing to do with your stack.
+              You open 12 tabs, read 0 articles, and lose 45 minutes anyway.
+            </p>
+            <p style={{ marginTop: '1.5rem' }}>
+              I was doing this every morning. I stopped.
+            </p>
           </div>
         </div>
       </section>
@@ -160,42 +150,25 @@ export default function Home() {
       {/* How It Works */}
       <section className={styles.howItWorks}>
         <div className={styles.howContent}>
-          <h2 className={`reveal`} style={{ fontSize: '2.5rem', marginBottom: '3rem', fontFamily: 'var(--font-mono)' }}>
-            Three steps. Zero effort.
+          <h2 className={`reveal`} style={{ fontSize: '2.5rem', marginBottom: '3rem' }}>
+            Here's exactly what happens under the hood.
           </h2>
 
-          <div className={styles.stepsGrid}>
-            <div className={`${styles.stepCard} reveal`}>
-              <div className={styles.stepNumber}>01</div>
-              <h3 className={styles.stepTitle}>Scrape</h3>
-              <p className={styles.stepDesc}>
-                Pulls top posts from Hacker News and Dev.to automatically every 24h via a BullMQ scheduler.
-              </p>
-            </div>
-
-            <div className={styles.stepConnector}></div>
-
-            <div className={`${styles.stepCard} reveal`}>
-              <div className={styles.stepNumber}>02</div>
-              <h3 className={styles.stepTitle}>Summarize</h3>
-              <p className={styles.stepDesc}>
-                Claude Haiku reads each article and writes a 3-line summary. No fluff. Just signal.
-              </p>
-            </div>
-
-            <div className={styles.stepConnector}></div>
-
-            <div className={`${styles.stepCard} reveal`}>
-              <div className={styles.stepNumber}>03</div>
-              <h3 className={styles.stepTitle}>Personalize</h3>
-              <p className={styles.stepDesc}>
-                OpenAI embeddings match articles to your interests. Your feed ranks by relevance, not recency.
-              </p>
-            </div>
+          <div className={`reveal`} style={{ maxWidth: '900px', lineHeight: '1.8', fontSize: '1.1rem', marginBottom: '3rem' }}>
+            <p>
+              A BullMQ job runs every 24h and scrapes the top posts from
+              Hacker News and Dev.to. Each article gets sent to gpt-4o-mini
+              for a 3-line summary — no fluff, just the point. Then
+              text-embedding-3-small turns your interests into vectors and
+              ranks the feed by relevance, not recency.
+            </p>
+            <p style={{ marginTop: '1.5rem' }}>
+              That's it. No magic.
+            </p>
           </div>
 
           <div className={`${styles.archDiagram} reveal`}>
-            <code>BullMQ → Scraper → Summarizer → Embeddings → Feed → Chat</code>
+            <code>BullMQ → Scraper → gpt-4o-mini → Embeddings → Ranked Feed → Chat</code>
           </div>
         </div>
       </section>
@@ -203,59 +176,41 @@ export default function Home() {
       {/* Features Grid */}
       <section className={styles.featuresSection}>
         <div className={styles.featuresContent}>
-          <h2 className={`reveal`} style={{ fontSize: '2.5rem', marginBottom: '3rem', fontFamily: 'var(--font-mono)' }}>
-            What you actually get
+          <h2 className={`reveal`} style={{ fontSize: '2.5rem', marginBottom: '3rem' }}>
+            What's actually working right now
           </h2>
 
-          <div className={styles.featuresGrid}>
-            <div className={`${styles.featureCard} reveal`}>
-              <div className={styles.featureIcon}>⚡</div>
-              <h3>Daily AI summaries</h3>
-              <p>Every article reduced to 3 clear lines. Read 10 articles in 2 minutes.</p>
-            </div>
-
-            <div className={`${styles.featureCard} reveal`}>
-              <div className={styles.featureIcon}>🎯</div>
-              <h3>Interest-matched feed</h3>
-              <p>Set your stack once. Get only NestJS, RAG, TypeScript, pgvector content. Not JavaScript framework drama.</p>
-            </div>
-
-            <div className={`${styles.featureCard} reveal`}>
-              <div className={styles.featureIcon}>💬</div>
-              <h3>Chat with your feed</h3>
-              <p>Ask "what's new in vector databases this week?" — it queries your stored articles semantically.</p>
-            </div>
-
-            <div className={`${styles.featureCard} reveal`}>
-              <div className={styles.featureIcon}>🔌</div>
-              <h3>API-first, no fluff</h3>
-              <p>No frontend UI for MVP. Just a clean REST API. Integrate how you want.</p>
-            </div>
+          <div className={`reveal`} style={{ maxWidth: '900px', lineHeight: '1.8', fontSize: '1.1rem', marginBottom: '3rem' }}>
+            <p><strong>What's live:</strong></p>
+            <p style={{ marginTop: '1rem' }}>
+              ✅  Daily scraper — HN + Dev.to, every 24h<br/>
+              ✅  3-line AI summaries — gpt-4o-mini, ~$0.002 per 100 articles<br/>
+              ✅  Interest-matched feed — set your stack once, stop seeing React drama<br/>
+              ✅  Semantic chat — "what's new in vector databases this week?"<br/>
+              🔧  Web UI — API-first for now, frontend coming
+            </p>
           </div>
+
+          <p style={{ maxWidth: '900px', lineHeight: '1.8', fontSize: '1.1rem', fontStyle: 'italic', color: 'var(--text-secondary)' }}>
+            API-first MVP. No dashboard yet. Just clean endpoints.
+          </p>
         </div>
       </section>
 
       {/* Tech Stack */}
       <section className={styles.techSection}>
         <div className={styles.techContent}>
-          <h2 className={styles.techLabel}>Open stack. No magic.</h2>
-          <div className={styles.techBadges}>
-            {[
-              'NestJS',
-              'TypeScript',
-              'PostgreSQL',
-              'pgvector',
-              'Redis',
-              'BullMQ',
-              'Claude Haiku',
-              'OpenAI',
-              'Railway',
-              'Docker'
-            ].map(tech => (
-              <span key={tech} className={styles.badge}>
-                {tech}
-              </span>
-            ))}
+          <h2 className={`reveal`} style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>Open stack</h2>
+          <div className={`reveal`} style={{ maxWidth: '900px', lineHeight: '1.8', fontSize: '1.1rem' }}>
+            <p>
+              Built with:<br/>
+              NestJS · TypeScript · PostgreSQL · pgvector · Redis · BullMQ<br/>
+              gpt-4o-mini · text-embedding-3-small · Railway · Docker
+            </p>
+            <p style={{ marginTop: '1.5rem' }}>
+              One repo. No microservice overengineering.<br/>
+              The whole thing costs $7–10/month to run.
+            </p>
           </div>
         </div>
       </section>
@@ -264,33 +219,56 @@ export default function Home() {
       <section className={styles.pricingSection}>
         <div className={styles.pricingContent}>
           <div className={`${styles.pricingCard} reveal`}>
-            <h2 className={styles.pricingTitle}>Transparent cost. No VC burn.</h2>
-
-            <div className={styles.price}>$7–10 / month</div>
-            <p className={styles.priceSubtitle}>That's what it actually costs to run.</p>
+            <h2 className={styles.pricingTitle}>Cost breakdown</h2>
+            <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: 'var(--text-secondary)' }}>What it actually costs me to run this.</p>
 
             <div className={styles.breakdown}>
               <div className={styles.breakdownItem}>
-                <span>Claude Haiku</span>
+                <span>gpt-4o-mini</span>
                 <span>~$2</span>
               </div>
               <div className={styles.breakdownItem}>
-                <span>OpenAI Embeddings</span>
+                <span>text-embedding-3-small</span>
                 <span>~$0.015</span>
               </div>
               <div className={styles.breakdownItem}>
-                <span>Railway hosting</span>
+                <span>Railway (hosting)</span>
                 <span>~$5</span>
               </div>
             </div>
 
-            <div className={styles.betaBadge}>
-              Beta access is free while I'm building this.
+            <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid var(--border-color)' }}>
+              <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>
+                <strong>Total: ~$7/month</strong>. I picked these models because they're
+                cheap enough that the AI bill rounds to noise.
+              </p>
+              <p style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>
+                Beta access is free while I'm building this.
+              </p>
             </div>
 
-            <button className={styles.pricingCTA}>
-              Get early access →
+            <button className={styles.pricingCTA} style={{ marginTop: '2rem' }}>
+              DM me on X →
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Build Log */}
+      <section className={styles.buildLogSection} style={{ padding: '5rem 2rem', textAlign: 'center' }}>
+        <div className={styles.buildLogContent} style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <h2 className={`reveal`} style={{ fontSize: '2.5rem', marginBottom: '3rem' }}>
+            Build log
+          </h2>
+
+          <div className={`reveal`} style={{ textAlign: 'left', lineHeight: '2' }}>
+            <p><strong>What's shipped recently.</strong></p>
+            <p style={{ marginTop: '1.5rem', fontSize: '1.05rem' }}>
+              May 12 — Semantic chat endpoint live<br/>
+              May 8  — Fixed BullMQ memory leak (was rough)<br/>
+              May 3  — Scraper + summarizer went live<br/>
+              Apr 28 — Started building this because I was tired of HN
+            </p>
           </div>
         </div>
       </section>
@@ -325,11 +303,10 @@ export default function Home() {
       {/* Footer */}
       <footer className={styles.footer}>
         <div className={styles.footerContent}>
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
-          <span>·</span>
-          <a href="https://x.com" target="_blank" rel="noopener noreferrer">X</a>
-          <span>·</span>
-          <span>Made with NestJS + Claude + pgvector</span>
+          <p style={{ margin: '0' }}>
+            Built by @zavxai · one engineer · one repo · $7/month<br/>
+            <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a> · <a href="https://x.com" target="_blank" rel="noopener noreferrer">X</a> · Made with NestJS + gpt-4o-mini + pgvector
+          </p>
         </div>
       </footer>
     </div>
