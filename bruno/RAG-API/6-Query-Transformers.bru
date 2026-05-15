@@ -1,0 +1,19 @@
+meta {
+  name: Query - What are Transformers?
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/rag/query
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "query": "What are transformers and what are they used for in AI?"
+  }
+}

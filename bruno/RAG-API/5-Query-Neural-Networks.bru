@@ -1,0 +1,19 @@
+meta {
+  name: Query - Explain Neural Networks
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/rag/query
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "query": "Explain neural networks and how they work"
+  }
+}
