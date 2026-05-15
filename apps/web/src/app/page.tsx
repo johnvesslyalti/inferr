@@ -56,9 +56,9 @@ export default function Home() {
             <a href="https://github.com" className={styles.githubLink} target="_blank" rel="noopener noreferrer">
               github
             </a>
-            <button className={styles.ctaButton}>
-              Get early access →
-            </button>
+            <a href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/google`} className={styles.ctaButton} style={{ textDecoration: 'none' }}>
+              Sign in →
+            </a>
           </div>
         </div>
       </nav>

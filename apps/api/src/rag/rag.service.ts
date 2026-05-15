@@ -6,7 +6,6 @@ import { DEMO_DOCUMENTS, Document } from './demo-data';
 @Injectable()
 export class RAGService {
   private client: OpenAI;
-  private initialized = false;
 
   constructor(private vectorStore: VectorStoreService) {
     this.client = new OpenAI({
@@ -15,74 +14,52 @@ export class RAGService {
   }
 
   async initializeDemoData(): Promise<void> {
-    if (this.initialized) {
-      return;
-    }
-
-    this.vectorStore.clear();
+    await this.vectorStore.clear();
     for (const doc of DEMO_DOCUMENTS) {
-      await this.vectorStore.addDocument(doc.id, doc.content, {
-        title: doc.title,
-      });
+      await this.vectorStore.addDocument(doc.id, doc.content, { title: doc.title });
     }
-    this.initialized = true;
   }
 
   async ingestDocuments(documents: Document[]): Promise<void> {
     for (const doc of documents) {
-      await this.vectorStore.addDocument(doc.id, doc.content, {
-        title: doc.title,
-      });
+      await this.vectorStore.addDocument(doc.id, doc.content, { title: doc.title });
     }
   }
 
   async retrieveRelevantDocs(query: string, topK: number = 3) {
-    return await this.vectorStore.searchSimilar(query, topK);
+    return this.vectorStore.searchSimilar(query, topK);
   }
 
   async query(userQuery: string): Promise<string> {
-    // Retrieve relevant documents
     const relevantDocs = await this.vectorStore.searchSimilar(userQuery, 3);
 
-    // Build context from retrieved documents
     const context = relevantDocs
-      .map(
-        (doc) =>
-          `Title: ${doc.metadata?.title || 'Unknown'}\nContent: ${doc.content}`,
-      )
+      .map((doc) => `Title: ${doc.title ?? 'Unknown'}\nContent: ${doc.content}`)
       .join('\n\n');
 
-    // Create prompt with context
     const systemPrompt = `You are a helpful AI assistant. Use the provided context to answer questions accurately.
 If the context doesn't contain relevant information, say so honestly.
 
 Context:
 ${context}`;
 
-    // Call OpenAI API
     const response = await this.client.chat.completions.create({
       model: 'gpt-4o-mini',
       max_tokens: 1024,
       messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        {
-          role: 'user',
-          content: userQuery,
-        },
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userQuery },
       ],
     });
 
-    const textContent = response.choices[0]?.message?.content;
-    return textContent || 'No response generated';
+    return response.choices[0]?.message?.content || 'No response generated';
   }
 
-  getDocuments() {
-    return this.vectorStore.getAllDocuments().map((doc) => ({
-      id: doc.id,
-      title: doc.metadata?.title,
+  async getDocuments() {
+    const docs = await this.vectorStore.getAllDocuments();
+    return docs.map((doc) => ({
+      id: doc.externalId,
+      title: doc.title,
       content: doc.content,
     }));
   }

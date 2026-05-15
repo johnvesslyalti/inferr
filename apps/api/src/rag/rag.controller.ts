@@ -10,7 +10,7 @@ export class RAGController {
     await this.ragService.initializeDemoData();
     return {
       message: 'Demo data initialized',
-      documents: this.ragService.getDocuments(),
+      documents: await this.ragService.getDocuments(),
     };
   }
 
@@ -22,9 +22,6 @@ export class RAGController {
       return { error: 'Query is required' };
     }
 
-    // Ensure demo data is loaded
-    await this.ragService.initializeDemoData();
-
     try {
       const answer = await this.ragService.query(query);
       const retrievedDocs = await this.ragService.retrieveRelevantDocs(query);
@@ -33,8 +30,8 @@ export class RAGController {
         query,
         answer,
         retrievedDocs: retrievedDocs.map((doc) => ({
-          id: doc.id,
-          title: doc.metadata?.title,
+          id: doc.externalId,
+          title: doc.title,
           content: doc.content,
         })),
       };
@@ -47,9 +44,9 @@ export class RAGController {
   }
 
   @Get('documents')
-  getDocuments() {
+  async getDocuments() {
     return {
-      documents: this.ragService.getDocuments(),
+      documents: await this.ragService.getDocuments(),
     };
   }
 
