@@ -4,12 +4,8 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('google_id_token')?.value;
   const pathname = request.nextUrl.pathname;
 
-  if (pathname === '/login' && token) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
   if (pathname === '/dashboard' && !token) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   if (pathname === '/auth/callback' && !token) {
@@ -20,5 +16,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/login', '/dashboard', '/auth/callback'],
+  matcher: ['/dashboard', '/auth/callback'],
 };

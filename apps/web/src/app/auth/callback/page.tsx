@@ -18,7 +18,7 @@ function AuthCallbackContent() {
       }, 100);
     } else {
       setTimeout(() => {
-        router.push('/login');
+        router.push('/');
       }, 100);
     }
   }, [searchParams, router]);

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import styles from './dashboard.module.css';
 
 interface UserProfile {
   id: string;
@@ -9,6 +11,29 @@ interface UserProfile {
   name: string;
   avatar?: string;
 }
+
+const features = [
+  {
+    label: '01',
+    title: 'Curated Daily Feeds',
+    desc: 'Top posts from HN & Dev.to scraped every 24h. Ranked by relevance to your stack, not by recency.',
+  },
+  {
+    label: '02',
+    title: 'Smart AI Filtering',
+    desc: 'text-embedding-3-small turns your interests into vectors. No more React drama if you write Go.',
+  },
+  {
+    label: '03',
+    title: 'Semantic Chat',
+    desc: 'Ask "what\'s new in vector DBs this week?" — get answers from actual articles, not hallucinations.',
+  },
+  {
+    label: '04',
+    title: 'Always Free',
+    desc: 'Early supporters keep free access forever. The whole thing costs $7/month to run.',
+  },
+];
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -20,53 +45,40 @@ export default function DashboardPage() {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem('google_id_token');
-
-        if (!token) {
-          router.push('/login');
-          return;
-        }
+        if (!token) { router.push('/'); return; }
 
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-        const response = await fetch(`${apiUrl}/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        const res = await fetch(`${apiUrl}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch profile');
-        }
-
-        const profile = await response.json();
-        setUser(profile);
+        if (!res.ok) throw new Error('Failed to fetch profile');
+        setUser(await res.json());
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
         localStorage.removeItem('google_id_token');
         document.cookie = 'google_id_token=; path=/; max-age=0;';
-        setTimeout(() => {
-          router.push('/login');
-        }, 2000);
+        setTimeout(() => router.push('/'), 2000);
       } finally {
         setLoading(false);
       }
     };
-
     fetchProfile();
   }, [router]);
 
   const handleSignOut = () => {
     localStorage.removeItem('google_id_token');
     document.cookie = 'google_id_token=; path=/; max-age=0;';
-    router.push('/login');
+    router.push('/');
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
-          <p className="text-white text-lg">Loading profile...</p>
+      <div className={styles.loadingScreen}>
+        <div className={styles.loadingInner}>
+          <div className={styles.spinner} />
+          <p className={styles.loadingText}>authenticating</p>
         </div>
       </div>
     );
@@ -74,147 +86,118 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
-          <p className="text-gray-700 mb-6">{error}</p>
-          <p className="text-gray-500 text-sm">Redirecting to login...</p>
+      <div className={styles.loadingScreen}>
+        <div className={styles.errorCard}>
+          <p className={styles.errorTitle}>access denied</p>
+          <p className={styles.errorMsg}>{error}</p>
+          <p className={styles.errorRedirect}>redirecting...</p>
         </div>
       </div>
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
+
+  const initials = user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <div className="min-h-screen bg-black">
-      <style>{`
-        .dashboard-bg {
-          background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
-        }
-        .profile-card {
-          background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
-          border: 1px solid #333333;
-        }
-        .feature-card {
-          background: rgba(30, 30, 30, 0.5);
-          border: 1px solid #333333;
-          transition: all 0.3s ease;
-        }
-        .feature-card:hover {
-          background: rgba(40, 40, 40, 0.7);
-          border-color: #444444;
-        }
-        .status-box {
-          background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(109, 40, 217, 0.1) 100%);
-          border: 1px solid rgba(59, 130, 246, 0.3);
-        }
-      `}</style>
-
-      {/* Header */}
-      <div className="border-b border-gray-800 bg-gray-950">
-        <div className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-white">AI Developer Feed</h1>
-            <p className="text-gray-500 text-sm mt-1">Early Access</p>
+    <div className={styles.container}>
+      {/* Navbar */}
+      <nav className={styles.navbar}>
+        <div className={styles.navContent}>
+          <div className={styles.logo}>
+            <Image src="/logo.png" alt="Logo" width={24} height={24} style={{ borderRadius: '4px' }} />
+            <span className={styles.logoText}>ai.devfeed</span>
           </div>
-          <button
-            onClick={handleSignOut}
-            className="bg-red-700 hover:bg-red-800 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-          >
-            Sign Out
+          <button onClick={handleSignOut} className={styles.signOutBtn}>
+            sign out →
           </button>
         </div>
-      </div>
+      </nav>
 
-      {/* Main Content */}
-      <div className="dashboard-bg min-h-screen">
-        <div className="max-w-5xl mx-auto px-6 py-16">
-          {/* Profile Card */}
-          <div className="profile-card rounded-2xl p-12 mb-12 shadow-2xl">
-            <div className="flex flex-col md:flex-row items-center gap-10">
-              {user.avatar && (
-                <img
-                  src={user.avatar}
-                  alt={user.name}
-                  className="w-40 h-40 rounded-full border-4 border-blue-500 object-cover shadow-lg"
-                />
+      {/* Main */}
+      <main className={styles.main}>
+
+        {/* Profile block */}
+        <section className={styles.profileSection}>
+          <div className={styles.profileCard}>
+            <div className={styles.avatar}>
+              {user.avatar ? (
+                <img src={user.avatar} alt={user.name} className={styles.avatarImg} />
+              ) : (
+                <span className={styles.avatarInitials}>{initials}</span>
               )}
-              <div className="flex-1 text-center md:text-left">
-                <h2 className="text-5xl font-bold text-white mb-3">{user.name}</h2>
-                <p className="text-gray-300 text-xl mb-6">{user.email}</p>
-                <div className="inline-flex items-center gap-3 px-5 py-2 bg-green-500 bg-opacity-20 border border-green-500 border-opacity-50 rounded-full">
-                  <span className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></span>
-                  <span className="text-sm text-green-300 font-medium">Access Granted</span>
-                </div>
-              </div>
+              <span className={styles.onlineDot} />
+            </div>
+            <div className={styles.profileInfo}>
+              <div className={styles.profileBadge}>early access</div>
+              <h1 className={styles.profileName}>{user.name}</h1>
+              <p className={styles.profileEmail}>{user.email}</p>
             </div>
           </div>
+        </section>
 
-          {/* Status Message */}
-          <div className="status-box rounded-2xl p-12 mb-12 shadow-lg">
-            <div className="text-center">
-              <div className="mb-8 flex justify-center">
-                <div className="w-16 h-16 bg-blue-500 bg-opacity-20 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
+        {/* Status block */}
+        <section className={styles.statusSection}>
+          <div className={styles.terminalCard}>
+            <div className={styles.terminalHeader}>
+              <div className={styles.terminalDots}>
+                <div /><div /><div />
               </div>
-              <h3 className="text-4xl font-bold text-white mb-6">We've Noted You!</h3>
-              <p className="text-gray-300 text-lg max-w-3xl mx-auto leading-relaxed mb-8">
-                Thanks for getting early access to <span className="font-semibold text-blue-400">AI Developer Feed</span>.
-                We're actively building the product and will reach out as soon as it's ready.
-                Stay tuned for updates!
+              <span className={styles.terminalTitle}>status.log</span>
+            </div>
+            <div className={styles.terminalBody}>
+              <p className={styles.terminalLine}>
+                <span className={styles.prompt}>$</span>
+                <span className={styles.cmd}>status --user {user.name.split(' ')[0].toLowerCase()}</span>
               </p>
-              <div className="pt-8 border-t border-gray-700">
-                <p className="text-gray-400">
-                  In the meantime, follow us on{' '}
-                  <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 font-medium">
-                    X
-                  </a>
-                  {' '}for updates
-                </p>
-              </div>
+              <p className={styles.terminalOutput}>
+                ✓ &nbsp;account confirmed · early access granted
+              </p>
+              <p className={styles.terminalOutput}>
+                ✓ &nbsp;workspace queued · building your feed now
+              </p>
+              <p className={styles.terminalOutput}>
+                ✓ &nbsp;you&apos;ll be notified when it&apos;s ready
+              </p>
+              <p className={styles.terminalCursor}>
+                <span className={styles.prompt}>$</span>
+                <span className="cursor" />
+              </p>
             </div>
           </div>
+        </section>
 
-          {/* Features */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="feature-card rounded-xl p-8">
-              <div className="w-12 h-12 bg-blue-500 bg-opacity-20 rounded-lg flex items-center justify-center mb-5">
-                <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+        {/* Features */}
+        <section className={styles.featuresSection}>
+          <p className={styles.sectionLabel}>// what&apos;s coming</p>
+          <div className={styles.featuresGrid}>
+            {features.map((f) => (
+              <div key={f.label} className={styles.featureCard}>
+                <span className={styles.featureLabel}>{f.label}</span>
+                <h3 className={styles.featureTitle}>{f.title}</h3>
+                <p className={styles.featureDesc}>{f.desc}</p>
               </div>
-              <h4 className="font-semibold text-white text-lg mb-3">Daily Updates</h4>
-              <p className="text-gray-400">Fresh content from Hacker News and Dev.to every day</p>
-            </div>
-
-            <div className="feature-card rounded-xl p-8">
-              <div className="w-12 h-12 bg-purple-500 bg-opacity-20 rounded-lg flex items-center justify-center mb-5">
-                <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h4 className="font-semibold text-white text-lg mb-3">Smart Filtering</h4>
-              <p className="text-gray-400">AI-powered relevance based on your tech stack</p>
-            </div>
-
-            <div className="feature-card rounded-xl p-8">
-              <div className="w-12 h-12 bg-green-500 bg-opacity-20 rounded-lg flex items-center justify-center mb-5">
-                <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h4 className="font-semibold text-white text-lg mb-3">Always Free</h4>
-              <p className="text-gray-400">Early access is completely free while we build</p>
-            </div>
+            ))}
           </div>
+        </section>
+
+        {/* Follow */}
+        <section className={styles.followSection}>
+          <p className={styles.followText}>
+            follow the build →&nbsp;
+            <a href="https://x.com" target="_blank" rel="noopener noreferrer">@zavxai on X</a>
+          </p>
+        </section>
+
+      </main>
+
+      <footer className={styles.footer}>
+        <div className={styles.footerContent}>
+          built by @zavxai · one engineer · $7/month ·{' '}
+          <a href="https://github.com" target="_blank" rel="noopener noreferrer">github</a>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
