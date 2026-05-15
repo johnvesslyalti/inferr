@@ -1,0 +1,10 @@
+{
+  "version": "1",
+  "name": "RAG API",
+  "uid": "rag-api-collection",
+  "root": true,
+  "rootDir": ".",
+  "settings": {
+    "headers": []
+  }
+}
