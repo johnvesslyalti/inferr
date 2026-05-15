@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import styles from './page.module.css'
 
 export default function Home() {
@@ -48,7 +49,7 @@ export default function Home() {
       <nav className={`${styles.navbar} ${scrolled ? styles.scrolled : ''}`}>
         <div className={styles.navContent}>
           <div className={styles.logo}>
-            <span className={styles.terminal}>⌘</span>
+            <Image src="/logo.png" alt="Logo" width={28} height={28} style={{ marginRight: '10px', borderRadius: '4px' }} />
             <span className={styles.logoText}>ai.devfeed</span>
           </div>
           <div className={styles.navRight}>
