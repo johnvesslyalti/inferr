@@ -5,7 +5,11 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
-  "packageManager": "pnpm@10.0.0",
+  "packageManager": "pnpm@10.15.1",
+  "engines": {
+    "node": "22.x",
+    "pnpm": "10.x"
+  },
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
@@ -14,7 +18,7 @@
     "test": "turbo test",
     "test:cov": "turbo test:cov",
     "start:prod": "turbo start:prod",
-    "clean": "turbo clean && rm -rf node_modules"
+    "clean": "turbo clean && find . -name node_modules -type d -prune -exec rm -rf '{}' +"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
