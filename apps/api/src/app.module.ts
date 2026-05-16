@@ -7,6 +7,7 @@ import { RAGModule } from './rag/rag.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ScraperModule } from './scraper/scraper.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ScraperModule } from './scraper/scraper.module';
     AuthModule,
     UsersModule,
     ScraperModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService],
