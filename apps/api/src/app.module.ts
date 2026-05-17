@@ -10,6 +10,7 @@ import { ScraperModule } from './scraper/scraper.module';
 import { AiModule } from './ai/ai.module';
 import { FeedModule } from './feed/feed.module';
 import { ChatModule } from './chat/chat.module';
+import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
 @Module({
   imports: [

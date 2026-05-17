@@ -10,6 +10,6 @@ import { GoogleTokenGuard } from './google-token.guard';
   imports: [PassportModule, UsersModule],
   providers: [AuthService, GoogleStrategy, GoogleTokenGuard],
   controllers: [AuthController],
-  exports: [AuthService],
+  exports: [AuthService, GoogleTokenGuard],
 })
 export class AuthModule {}
