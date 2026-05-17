@@ -1,7 +1,9 @@
 import './env';
+import * as path from 'path';
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { AppModule } from './app.module';
 import { DRIZZLE } from './db/drizzle.provider';
 import type { DrizzleDB } from './db/drizzle.provider';
@@ -19,6 +21,11 @@ async function bootstrap() {
     logger.error('Database connection failed');
     process.exit(1);
   }
+
+  await db.execute(sql`CREATE EXTENSION IF NOT EXISTS vector`);
+  const migrationsFolder = path.join(__dirname, '../drizzle');
+  await migrate(db, { migrationsFolder });
+  logger.log('Migrations applied');
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalFilters(new GlobalExceptionFilter());
