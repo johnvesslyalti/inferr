@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const PROTECTED = ['/feed', '/onboarding', '/dashboard'];
+
 export function proxy(request: NextRequest) {
   const token = request.cookies.get('google_id_token')?.value;
-  const pathname = request.nextUrl.pathname;
+  const { pathname } = request.nextUrl;
 
-  if (pathname === '/dashboard' && !token) {
+  if (PROTECTED.some((p) => pathname.startsWith(p)) && !token) {
     return NextResponse.redirect(new URL('/', request.url));
-  }
-
-  if (pathname === '/auth/callback' && !token) {
-    return NextResponse.next();
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/dashboard', '/auth/callback'],
+  matcher: ['/feed/:path*', '/onboarding/:path*', '/dashboard/:path*'],
 };
