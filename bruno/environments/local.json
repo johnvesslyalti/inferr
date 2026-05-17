@@ -7,6 +7,13 @@
       "enabled": true,
       "secret": false,
       "type": "text"
+    },
+    {
+      "name": "authToken",
+      "value": "",
+      "enabled": true,
+      "secret": false,
+      "type": "text"
     }
   ]
 }

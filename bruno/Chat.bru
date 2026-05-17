@@ -1,0 +1,21 @@
+meta {
+  name: Chat
+  type: http
+  seq: 30
+}
+
+post {
+  url: http://localhost:3001/chat
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{authToken}}
+}
+
+body:json {
+  {
+    "message": "What are the latest trends in TypeScript?"
+  }
+}
