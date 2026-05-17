@@ -9,6 +9,7 @@ out/
 
 # env
 .env
+.env.*
 .env.local
 .env.*.local
 
