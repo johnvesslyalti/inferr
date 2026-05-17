@@ -7,6 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ScraperModule } from './scraper/scraper.module';
 import { AiModule } from './ai/ai.module';
+import { FeedModule } from './feed/feed.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { AiModule } from './ai/ai.module';
     UsersModule,
     ScraperModule,
     AiModule,
+    FeedModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
