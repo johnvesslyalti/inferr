@@ -1,7 +1,7 @@
 meta {
   name: Google Login
   type: http
-  seq: 1
+  seq: 3
 }
 
 get {
@@ -13,9 +13,9 @@ get {
 docs {
   Open this URL in a browser — it redirects to Google's consent screen.
   After approving, Google redirects back to the API which then redirects to:
-
+  
     http://localhost:3000/auth/callback?token=<your-user-uuid>
-
+  
   Copy the token from that URL and set it as the `authToken` variable
   in the Bruno local environment, then use it in Get Feed and Chat requests.
 }

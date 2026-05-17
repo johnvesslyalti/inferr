@@ -1,0 +1,14 @@
+node_modules
+apps/web
+apps/api/node_modules
+apps/api/dist
+apps/api/coverage
+apps/api/test
+apps/api/drizzle.config.ts
+**/*.tsbuildinfo
+**/.env
+.git
+.github
+bruno
+*.md
+docker-compose.yml
