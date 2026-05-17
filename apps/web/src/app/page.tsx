@@ -196,8 +196,6 @@ export default function Home() {
           <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
           <span className={styles.footerDot}>·</span>
           <a href={X_URL} target="_blank" rel="noopener noreferrer">X</a>
-          <span className={styles.footerDot}>·</span>
-          <span>NestJS + gpt-4o-mini + pgvector</span>
         </div>
       </footer>
 
