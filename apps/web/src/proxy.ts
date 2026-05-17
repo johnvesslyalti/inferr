@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const PROTECTED = ['/feed', '/onboarding', '/dashboard'];
+const PROTECTED = ['/feed', '/onboarding', '/dashboard', '/chat'];
 
 export function proxy(request: NextRequest) {
   const token = request.cookies.get('google_id_token')?.value;
@@ -14,5 +14,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/feed/:path*', '/onboarding/:path*', '/dashboard/:path*'],
+  matcher: ['/feed/:path*', '/onboarding/:path*', '/dashboard/:path*', '/chat/:path*'],
 };

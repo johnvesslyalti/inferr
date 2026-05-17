@@ -56,6 +56,7 @@ export default function FeedPage() {
       <nav className={styles.nav}>
         <span className={styles.logo}>ai<span className={styles.logoAccent}>feed</span></span>
         <div className={styles.navRight}>
+          <a href="/chat" className={styles.navLink}>chat</a>
           <a href="/onboarding" className={styles.navLink}>edit interests</a>
           <button onClick={signOut} className={styles.signOut}>sign out</button>
         </div>
