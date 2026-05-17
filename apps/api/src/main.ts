@@ -1,10 +1,11 @@
 import './env';
 import { NestFactory } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { AppModule } from './app.module';
 import { DRIZZLE } from './db/drizzle.provider';
 import type { DrizzleDB } from './db/drizzle.provider';
+import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -19,10 +20,14 @@ async function bootstrap() {
     process.exit(1);
   }
 
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalFilters(new GlobalExceptionFilter());
+
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,
   });
+
   await app.listen(process.env.API_PORT ?? 3001);
 }
 bootstrap();

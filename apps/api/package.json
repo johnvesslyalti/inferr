@@ -24,12 +24,17 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@nestjs/bull": "^11.0.4",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/throttler": "^6.5.0",
     "@types/pg": "^8.20.0",
+    "bull": "^4.16.5",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
     "google-auth-library": "^10.6.2",
