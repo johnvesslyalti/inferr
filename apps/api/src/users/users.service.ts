@@ -67,4 +67,13 @@ export class UsersService {
       .values({ userId, tags })
       .onConflictDoUpdate({ target: userInterests.userId, set: { tags } });
   }
+
+  async hasInterests(userId: string): Promise<boolean> {
+    const result = await this.db
+      .select({ tags: userInterests.tags })
+      .from(userInterests)
+      .where(eq(userInterests.userId, userId))
+      .limit(1);
+    return (result[0]?.tags?.length ?? 0) > 0;
+  }
 }

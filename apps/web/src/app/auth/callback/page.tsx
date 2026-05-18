@@ -10,17 +10,23 @@ function AuthCallbackContent() {
   useEffect(() => {
     const token = searchParams.get('token');
 
-    if (token) {
-      localStorage.setItem('google_id_token', token);
-      document.cookie = `google_id_token=${token}; path=/; max-age=2592000;`;
-      setTimeout(() => {
-        router.push('/onboarding');
-      }, 100);
-    } else {
-      setTimeout(() => {
-        router.push('/');
-      }, 100);
+    if (!token) {
+      router.push('/');
+      return;
     }
+
+    localStorage.setItem('google_id_token', token);
+    document.cookie = `google_id_token=${token}; path=/; max-age=2592000;`;
+
+    const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    fetch(`${api}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((user) => {
+        router.push(user.hasInterests ? '/feed' : '/onboarding');
+      })
+      .catch(() => {
+        router.push('/onboarding');
+      });
   }, [searchParams, router]);
 
   return (

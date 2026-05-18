@@ -10,10 +10,11 @@ import { AuthGuard } from '@nestjs/passport';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { GoogleTokenGuard } from './google-token.guard';
+import { UsersService } from '../users/users.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService, private usersService: UsersService) {}
 
   @Get('google')
   @UseGuards(AuthGuard('google'))
@@ -43,11 +44,14 @@ export class AuthController {
       throw new UnauthorizedException('User not found');
     }
 
+    const hasInterests = await this.usersService.hasInterests(user.id);
+
     return {
       id: user.id,
       email: user.email,
       name: user.name,
       avatar: user.avatar,
+      hasInterests,
     };
   }
 }
