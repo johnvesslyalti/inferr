@@ -7,7 +7,7 @@ const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono'
 const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-dm-sans' })
 
 export const metadata: Metadata = {
-  title: 'AI Developer Feed',
+  title: 'inferr',
   description: 'Your AI-powered developer feed',
 }
 

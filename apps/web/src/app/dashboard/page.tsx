@@ -107,7 +107,7 @@ export default function DashboardPage() {
         <div className={styles.navContent}>
           <div className={styles.logo}>
             <Image src="/logo.png" alt="Logo" width={24} height={24} style={{ borderRadius: '4px' }} />
-            <span className={styles.logoText}>ai.devfeed</span>
+            <span className={styles.logoText}>inferr</span>
           </div>
           <button onClick={handleSignOut} className={styles.signOutBtn}>
             sign out →

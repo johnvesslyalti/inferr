@@ -61,7 +61,7 @@ export default function Home() {
         <div className={styles.navContent}>
           <div className={styles.logo}>
             <Image src="/logo.png" alt="Logo" width={26} height={26} style={{ borderRadius: '4px' }} />
-            <span className={styles.logoText}>ai.devfeed</span>
+            <span className={styles.logoText}>inferr</span>
           </div>
           <div className={styles.navRight}>
             <a href={`${API_URL}/auth/google`} className={styles.signInBtn}>
@@ -81,7 +81,7 @@ export default function Home() {
           </h1>
 
           <p className={`${styles.subheadline} reveal`}>
-            AI Developer Feed scrapes Hacker News and Dev.to every day, summarises each article in 3 lines,
+            inferr scrapes Hacker News and Dev.to every day, summarises each article in 3 lines,
             and surfaces only what&apos;s relevant to your stack — automatically.
           </p>
 
