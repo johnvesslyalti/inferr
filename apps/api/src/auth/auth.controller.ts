@@ -13,12 +13,22 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UsersService } from '../users/users.service';
 
-const COOKIE_OPTIONS = {
+const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'strict' as const,
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   path: '/',
+};
+
+// Not HttpOnly — frontend JS reads it once then clears it
+// Short-lived (2 min) so exposure window is minimal
+const ACCESS_COOKIE_OPTIONS = {
+  httpOnly: false,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict' as const,
+  maxAge: 2 * 60 * 1000, // 2 minutes
+  path: '/auth/callback',
 };
 
 @Controller('auth')
@@ -43,8 +53,9 @@ export class AuthController {
     const refreshToken = await this.authService.createRefreshToken(user.id);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
-    res.cookie('refresh_token', refreshToken, COOKIE_OPTIONS);
-    return res.redirect(`${frontendUrl}/auth/callback?token=${accessToken}`);
+    res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
+    res.cookie('access_token', accessToken, ACCESS_COOKIE_OPTIONS);
+    return res.redirect(`${frontendUrl}/auth/callback`);
   }
 
   @Get('me')
@@ -76,7 +87,7 @@ export class AuthController {
 
     const { accessToken, refreshToken } = await this.authService.rotateRefreshToken(oldToken);
 
-    res.cookie('refresh_token', refreshToken, COOKIE_OPTIONS);
+    res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
     return res.json({ accessToken });
   }
 
