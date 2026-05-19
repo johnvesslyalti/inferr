@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const PROTECTED = ['/feed', '/onboarding', '/dashboard', '/chat'];
 
 export function proxy(request: NextRequest) {
-  const token = request.cookies.get('google_id_token')?.value;
+  const token = request.cookies.get('refresh_token')?.value;
   const { pathname } = request.nextUrl;
 
   if (PROTECTED.some((p) => pathname.startsWith(p)) && !token) {

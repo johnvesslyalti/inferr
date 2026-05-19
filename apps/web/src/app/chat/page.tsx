@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { useAuth } from '@/src/lib/auth-context';
 import styles from './chat.module.css';
 
 interface Source {
@@ -21,18 +22,16 @@ const SOURCE_LABEL: Record<string, string> = { hn: 'HN', devto: 'Dev.to' };
 
 export default function ChatPage() {
   const router = useRouter();
+  const { token, ready, signOut: authSignOut } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    const t = localStorage.getItem('google_id_token');
-    if (!t) { router.push('/'); return; }
-    setToken(t);
-  }, [router]);
+    if (ready && !token) { router.push('/'); }
+  }, [router, token, ready]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -91,9 +90,8 @@ export default function ChatPage() {
     e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
   };
 
-  const signOut = () => {
-    localStorage.removeItem('google_id_token');
-    document.cookie = 'google_id_token=; path=/; max-age=0;';
+  const signOut = async () => {
+    await authSignOut();
     router.push('/');
   };
 

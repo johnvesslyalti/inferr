@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { useAuth } from '@/src/lib/auth-context';
 import styles from './feed.module.css';
 
 interface Article {
@@ -19,19 +20,21 @@ const SOURCE_LABEL: Record<string, string> = {
 
 export default function FeedPage() {
   const router = useRouter();
+  const { token, ready, signOut: authSignOut } = useAuth();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!ready) return;
+    if (!token) { router.push('/'); return; }
+
     const fetchFeed = async () => {
       try {
-        const token = localStorage.getItem('google_id_token');
-        if (!token) { router.push('/'); return; }
-
         const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
         const res = await fetch(`${api}/feed`, {
           headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
         });
 
         if (!res.ok) throw new Error('Failed to load feed');
@@ -44,11 +47,10 @@ export default function FeedPage() {
     };
 
     fetchFeed();
-  }, [router]);
+  }, [router, token, ready]);
 
-  const signOut = () => {
-    localStorage.removeItem('google_id_token');
-    document.cookie = 'google_id_token=; path=/; max-age=0;';
+  const signOut = async () => {
+    await authSignOut();
     router.push('/');
   };
 

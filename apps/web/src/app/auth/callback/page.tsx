@@ -2,10 +2,12 @@
 
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/src/lib/auth-context';
 
 function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { setToken } = useAuth();
 
   useEffect(() => {
     const token = searchParams.get('token');
@@ -15,11 +17,14 @@ function AuthCallbackContent() {
       return;
     }
 
-    localStorage.setItem('google_id_token', token);
-    document.cookie = `google_id_token=${token}; path=/; max-age=2592000;`;
+    // Store access token in memory only — no localStorage, no insecure cookie
+    setToken(token);
 
     const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    fetch(`${api}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${api}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
+    })
       .then((r) => r.json())
       .then((user) => {
         router.push(user.hasInterests ? '/feed' : '/onboarding');
@@ -27,7 +32,7 @@ function AuthCallbackContent() {
       .catch(() => {
         router.push('/onboarding');
       });
-  }, [searchParams, router]);
+  }, [searchParams, router, setToken]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
