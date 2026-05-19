@@ -13,11 +13,22 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UsersService } from '../users/users.service';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure: isProduction,
   sameSite: 'strict' as const,
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  path: '/',
+};
+
+// HttpOnly — readable only by the Next.js middleware for JWT verification
+const SESSION_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: 'strict' as const,
+  maxAge: 15 * 60 * 1000, // matches access token expiry (15 min)
   path: '/',
 };
 
@@ -25,7 +36,7 @@ const REFRESH_COOKIE_OPTIONS = {
 // Short-lived (2 min) so exposure window is minimal
 const ACCESS_COOKIE_OPTIONS = {
   httpOnly: false,
-  secure: process.env.NODE_ENV === 'production',
+  secure: isProduction,
   sameSite: 'strict' as const,
   maxAge: 2 * 60 * 1000, // 2 minutes
   path: '/auth/callback',
@@ -54,6 +65,7 @@ export class AuthController {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
     res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
+    res.cookie('session', accessToken, SESSION_COOKIE_OPTIONS);
     res.cookie('access_token', accessToken, ACCESS_COOKIE_OPTIONS);
     return res.redirect(`${frontendUrl}/auth/callback`);
   }
@@ -88,6 +100,7 @@ export class AuthController {
     const { accessToken, refreshToken } = await this.authService.rotateRefreshToken(oldToken);
 
     res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
+    res.cookie('session', accessToken, SESSION_COOKIE_OPTIONS);
     return res.json({ accessToken });
   }
 
@@ -100,6 +113,7 @@ export class AuthController {
     }
 
     res.clearCookie('refresh_token', { path: '/' });
+    res.clearCookie('session', { path: '/' });
     return res.json({ message: 'Logged out' });
   }
 }
