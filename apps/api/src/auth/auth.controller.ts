@@ -9,7 +9,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { GoogleTokenGuard } from './google-token.guard';
+import { JwtAuthGuard } from './jwt-auth.guard';
 import { UsersService } from '../users/users.service';
 
 @Controller('auth')
@@ -30,13 +30,14 @@ export class AuthController {
     }
 
     const user = await this.authService.validateAndUpsertGoogleUser(googleProfile);
+    const accessToken = this.authService.signAccessToken(user);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
-    return res.redirect(`${frontendUrl}/auth/callback?token=${user.id}`);
+    return res.redirect(`${frontendUrl}/auth/callback?token=${accessToken}`);
   }
 
   @Get('me')
-  @UseGuards(GoogleTokenGuard)
+  @UseGuards(JwtAuthGuard)
   async getProfile(@Req() req: Request) {
     const user = (req.user as any);
 
@@ -50,7 +51,6 @@ export class AuthController {
       id: user.id,
       email: user.email,
       name: user.name,
-      avatar: user.avatar,
       hasInterests,
     };
   }
