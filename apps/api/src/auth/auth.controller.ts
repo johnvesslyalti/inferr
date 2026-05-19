@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   UseGuards,
   Res,
   Req,
@@ -11,6 +12,14 @@ import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UsersService } from '../users/users.service';
+
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict' as const,
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  path: '/',
+};
 
 @Controller('auth')
 export class AuthController {
@@ -31,8 +40,10 @@ export class AuthController {
 
     const user = await this.authService.validateAndUpsertGoogleUser(googleProfile);
     const accessToken = this.authService.signAccessToken(user);
+    const refreshToken = await this.authService.createRefreshToken(user.id);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
+    res.cookie('refresh_token', refreshToken, COOKIE_OPTIONS);
     return res.redirect(`${frontendUrl}/auth/callback?token=${accessToken}`);
   }
 
@@ -53,5 +64,31 @@ export class AuthController {
       name: user.name,
       hasInterests,
     };
+  }
+
+  @Post('refresh')
+  async refresh(@Req() req: Request, @Res() res: Response) {
+    const oldToken = req.cookies?.['refresh_token'];
+
+    if (!oldToken) {
+      throw new UnauthorizedException('No refresh token provided');
+    }
+
+    const { accessToken, refreshToken } = await this.authService.rotateRefreshToken(oldToken);
+
+    res.cookie('refresh_token', refreshToken, COOKIE_OPTIONS);
+    return res.json({ accessToken });
+  }
+
+  @Post('logout')
+  async logout(@Req() req: Request, @Res() res: Response) {
+    const token = req.cookies?.['refresh_token'];
+
+    if (token) {
+      await this.authService.revokeRefreshToken(token);
+    }
+
+    res.clearCookie('refresh_token', { path: '/' });
+    return res.json({ message: 'Logged out' });
   }
 }
