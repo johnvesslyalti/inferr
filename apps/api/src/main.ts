@@ -1,5 +1,6 @@
 import './env';
 import * as path from 'path';
+import cookieParser from 'cookie-parser';
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
@@ -27,6 +28,7 @@ async function bootstrap() {
   await migrate(db, { migrationsFolder });
   logger.log('Migrations applied');
 
+  app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalFilters(new GlobalExceptionFilter());
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/src/lib/auth-context';
 import styles from './onboarding.module.css';
 
 const TAGS = [
@@ -17,21 +18,24 @@ const TAGS = [
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { token, ready } = useAuth();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('google_id_token');
-    if (!token) return;
+    if (!ready || !token) return;
     const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    fetch(`${api}/users/interests`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${api}/users/interests`, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
+    })
       .then((r) => r.json())
       .then((data) => {
         if (data.tags?.length) setSelected(new Set(data.tags));
       })
       .catch(() => {});
-  }, []);
+  }, [token, ready]);
 
   const toggle = (tag: string) =>
     setSelected((prev) => {
@@ -44,7 +48,6 @@ export default function OnboardingPage() {
     setSaving(true);
     setError(null);
     try {
-      const token = localStorage.getItem('google_id_token');
       const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
       const res = await fetch(`${api}/users/interests`, {
         method: 'POST',
@@ -52,6 +55,7 @@ export default function OnboardingPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
+        credentials: 'include',
         body: JSON.stringify({ tags: Array.from(selected) }),
       });
       if (!res.ok) throw new Error('Failed to save interests');

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { useAuth } from '@/src/lib/auth-context';
 import styles from './dashboard.module.css';
 
 interface UserProfile {
@@ -37,16 +38,17 @@ const features = [
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { token, ready, signOut } = useAuth();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!ready) return;
+    if (!token) { router.push('/'); return; }
+
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem('google_id_token');
-        if (!token) { router.push('/'); return; }
-
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
         const res = await fetch(`${apiUrl}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -57,19 +59,16 @@ export default function DashboardPage() {
         setUser(await res.json());
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
-        localStorage.removeItem('google_id_token');
-        document.cookie = 'google_id_token=; path=/; max-age=0;';
         setTimeout(() => router.push('/'), 2000);
       } finally {
         setLoading(false);
       }
     };
     fetchProfile();
-  }, [router]);
+  }, [router, token, ready]);
 
-  const handleSignOut = () => {
-    localStorage.removeItem('google_id_token');
-    document.cookie = 'google_id_token=; path=/; max-age=0;';
+  const handleSignOut = async () => {
+    await signOut();
     router.push('/');
   };
 

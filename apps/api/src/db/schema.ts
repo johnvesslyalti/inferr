@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, index, customType, text } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, index, customType, text, boolean } from 'drizzle-orm/pg-core';
 
 const vector = (name: string, dimensions: number) =>
   customType<{ data: number[]; driverData: string }>({
@@ -48,6 +48,21 @@ export const articles = pgTable(
   ],
 );
 
+export const refreshTokens = pgTable(
+  'refresh_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    token: varchar('token', { length: 255 }).notNull().unique(),
+    expiresAt: timestamp('expires_at').notNull(),
+    revoked: boolean('revoked').notNull().default(false),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [index('refresh_tokens_token_idx').on(t.token)],
+);
+
 export const userInterests = pgTable('user_interests', {
   userId: uuid('user_id')
     .primaryKey()
@@ -61,3 +76,5 @@ export type Article = typeof articles.$inferSelect;
 export type NewArticle = typeof articles.$inferInsert;
 export type UserInterest = typeof userInterests.$inferSelect;
 export type NewUserInterest = typeof userInterests.$inferInsert;
+export type RefreshToken = typeof refreshTokens.$inferSelect;
+export type NewRefreshToken = typeof refreshTokens.$inferInsert;
