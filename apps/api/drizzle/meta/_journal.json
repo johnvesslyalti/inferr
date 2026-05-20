@@ -22,6 +22,13 @@
       "when": 1778920000000,
       "tag": "0002_quiet_proudstar",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1747785600000,
+      "tag": "0003_perf_indexes",
+      "breakpoints": true
     }
   ]
 }
