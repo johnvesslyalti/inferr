@@ -114,7 +114,7 @@ export default function ChatPage() {
           {messages.length === 0 && (
             <div className={styles.empty}>
               <p className={styles.emptyTitle}>Ask anything about your feed</p>
-              <p className={styles.emptyHint}>e.g. "What's new in Rust this week?" or "Summarise the top Go articles"</p>
+              <p className={styles.emptyHint}>{`e.g. "What's new in Rust this week?" or "Summarise the top Go articles"`}</p>
             </div>
           )}
 
