@@ -12,15 +12,17 @@ export const DrizzleProvider: Provider = {
   provide: DRIZZLE,
   inject: [ConfigService],
   useFactory: (config: ConfigService): DrizzleDB => {
-    const ssl = config.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false;
-    const pool = new Pool({
-      host: config.get<string>('DB_HOST', 'localhost'),
-      port: config.get<number>('DB_PORT', 5432),
-      user: config.get<string>('DB_USER', 'postgres'),
-      password: config.get<string>('DB_PASS', 'postgres'),
-      database: config.get<string>('DB_NAME', 'ai_feed'),
-      ssl,
-    });
+    const databaseUrl = config.get<string>('DATABASE_URL');
+    const pool = databaseUrl
+      ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } })
+      : new Pool({
+          host: config.get<string>('DB_HOST', 'localhost'),
+          port: config.get<number>('DB_PORT', 5432),
+          user: config.get<string>('DB_USER', 'postgres'),
+          password: config.get<string>('DB_PASS', 'postgres'),
+          database: config.get<string>('DB_NAME', 'ai_feed'),
+          ssl: config.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
+        });
     return drizzle(pool, { schema });
   },
 };
