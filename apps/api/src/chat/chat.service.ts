@@ -53,7 +53,10 @@ export class ChatService {
     const contextArticles = rows.rows;
 
     const context = contextArticles
-      .map((a, i) => `[${i + 1}] ${a.title}\nSummary: ${a.summary ?? 'No summary available.'}\nURL: ${a.url}`)
+      .map(
+        (a, i) =>
+          `[${i + 1}] ${a.title}\nSummary: ${a.summary ?? 'No summary available.'}\nURL: ${a.url}`,
+      )
       .join('\n\n');
 
     const response = await this.client.chat.completions.create({

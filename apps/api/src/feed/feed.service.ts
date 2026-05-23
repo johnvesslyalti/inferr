@@ -7,7 +7,10 @@ import { DRIZZLE } from '../db/drizzle.provider';
 import type { DrizzleDB } from '../db/drizzle.provider';
 import { userInterests } from '../db/schema';
 import { AiService } from '../ai/ai.service';
-import { SCRAPE_QUEUE, SCRAPE_JOB } from '../scheduler/scrape-pipeline.processor';
+import {
+  SCRAPE_QUEUE,
+  SCRAPE_JOB,
+} from '../scheduler/scrape-pipeline.processor';
 
 export interface FeedArticle {
   title: string;
@@ -34,7 +37,8 @@ export class FeedService {
       .limit(1);
 
     const tags = interestRow[0]?.tags ?? [];
-    const queryText = tags.length > 0 ? tags.join(' ') : 'software development programming';
+    const queryText =
+      tags.length > 0 ? tags.join(' ') : 'software development programming';
 
     this.logger.log(`Building feed for user ${userId} with tags: ${queryText}`);
 
@@ -66,10 +70,16 @@ export class FeedService {
 
     if (articles.length === 0) {
       const jobs = await this.scrapeQueue.getJobs(['active', 'waiting']);
-      const alreadyRunning = jobs.some((j) => j.name === SCRAPE_JOB && !j.opts.repeat);
+      const alreadyRunning = jobs.some(
+        (j) => j.name === SCRAPE_JOB && !j.opts.repeat,
+      );
       if (!alreadyRunning) {
         this.logger.log('No articles found — triggering scraper automatically');
-        await this.scrapeQueue.add(SCRAPE_JOB, {}, { attempts: 3, backoff: { type: 'exponential', delay: 10_000 } });
+        await this.scrapeQueue.add(
+          SCRAPE_JOB,
+          {},
+          { attempts: 3, backoff: { type: 'exponential', delay: 10_000 } },
+        );
       }
     }
 

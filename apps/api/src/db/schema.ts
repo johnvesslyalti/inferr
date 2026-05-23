@@ -1,4 +1,13 @@
-import { pgTable, uuid, varchar, timestamp, index, customType, text, boolean } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  timestamp,
+  index,
+  customType,
+  text,
+  boolean,
+} from 'drizzle-orm/pg-core';
 
 const vector = (name: string, dimensions: number) =>
   customType<{ data: number[]; driverData: string }>({
@@ -28,7 +37,6 @@ export const users = pgTable(
     index('users_email_idx').on(t.email),
   ],
 );
-
 
 export const articles = pgTable(
   'articles',

@@ -3,7 +3,10 @@ import { BullModule } from '@nestjs/bull';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScraperModule } from '../scraper/scraper.module';
 import { AiModule } from '../ai/ai.module';
-import { ScrapePipelineProcessor, SCRAPE_QUEUE } from './scrape-pipeline.processor';
+import {
+  ScrapePipelineProcessor,
+  SCRAPE_QUEUE,
+} from './scrape-pipeline.processor';
 import { SchedulerController } from './scheduler.controller';
 
 @Module({
