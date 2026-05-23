@@ -23,15 +23,6 @@ const REFRESH_COOKIE_OPTIONS = {
   path: '/',
 };
 
-// Not HttpOnly — frontend JS reads it once then clears it
-// Short-lived (2 min) so exposure window is minimal
-const ACCESS_COOKIE_OPTIONS = {
-  httpOnly: false,
-  secure: isProduction,
-  sameSite: 'strict' as const,
-  maxAge: 2 * 60 * 1000, // 2 minutes
-  path: '/auth/callback',
-};
 
 @Controller('auth')
 export class AuthController {
@@ -51,12 +42,10 @@ export class AuthController {
     }
 
     const user = await this.authService.validateAndUpsertGoogleUser(googleProfile);
-    const accessToken = this.authService.signAccessToken(user);
     const refreshToken = await this.authService.createRefreshToken(user.id);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
     res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
-    res.cookie('access_token', accessToken, ACCESS_COOKIE_OPTIONS);
     return res.redirect(`${frontendUrl}/auth/callback`);
   }
 
