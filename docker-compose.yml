@@ -39,6 +39,8 @@ services:
     env_file:
       - .env
     environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ai_feed
       DB_HOST: postgres
       DB_PORT: 5432
       DB_SSL: 'false'

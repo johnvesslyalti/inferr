@@ -13,8 +13,9 @@ export const DrizzleProvider: Provider = {
   inject: [ConfigService],
   useFactory: (config: ConfigService): DrizzleDB => {
     const databaseUrl = config.get<string>('DATABASE_URL');
+    const useSsl = config.get('DB_SSL') === 'true';
     const pool = databaseUrl
-      ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } })
+      ? new Pool({ connectionString: databaseUrl, ssl: useSsl ? { rejectUnauthorized: false } : false })
       : new Pool({
           host: config.get<string>('DB_HOST', 'localhost'),
           port: config.get<number>('DB_PORT', 5432),
