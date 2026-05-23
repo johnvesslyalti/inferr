@@ -62,10 +62,9 @@ export class ScraperService {
   async scrapeDevTo(): Promise<number> {
     this.logger.log('Scraping Dev.to...');
 
-    const res = await fetch(
-      'https://dev.to/api/articles?top=1&per_page=30',
-      { headers: { 'User-Agent': 'ai-developer-feed/1.0' } },
-    );
+    const res = await fetch('https://dev.to/api/articles?top=1&per_page=30', {
+      headers: { 'User-Agent': 'ai-developer-feed/1.0' },
+    });
     if (!res.ok) throw new Error(`Dev.to API error: ${res.status}`);
 
     const data = (await res.json()) as DevToArticle[];
@@ -89,7 +88,9 @@ export class ScraperService {
       .onConflictDoNothing({ target: articles.url })
       .returning({ id: articles.id });
 
-    this.logger.log(`Saved ${inserted.length} new articles (skipped ${rows.length - inserted.length} duplicates)`);
+    this.logger.log(
+      `Saved ${inserted.length} new articles (skipped ${rows.length - inserted.length} duplicates)`,
+    );
     return inserted.length;
   }
 }

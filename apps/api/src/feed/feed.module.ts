@@ -7,7 +7,11 @@ import { AuthModule } from '../auth/auth.module';
 import { SCRAPE_QUEUE } from '../scheduler/scrape-pipeline.processor';
 
 @Module({
-  imports: [AiModule, AuthModule, BullModule.registerQueue({ name: SCRAPE_QUEUE })],
+  imports: [
+    AiModule,
+    AuthModule,
+    BullModule.registerQueue({ name: SCRAPE_QUEUE }),
+  ],
   providers: [FeedService],
   controllers: [FeedController],
 })

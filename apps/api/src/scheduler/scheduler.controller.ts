@@ -10,7 +10,11 @@ export class SchedulerController {
   @Post('trigger')
   @HttpCode(202)
   async trigger() {
-    const job = await this.queue.add(SCRAPE_JOB, {}, { attempts: 3, backoff: { type: 'exponential', delay: 10_000 } });
+    const job = await this.queue.add(
+      SCRAPE_JOB,
+      {},
+      { attempts: 3, backoff: { type: 'exponential', delay: 10_000 } },
+    );
     return { jobId: job.id, status: 'queued' };
   }
 }

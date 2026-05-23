@@ -42,7 +42,9 @@ export class AiService {
     return response.data[0].embedding;
   }
 
-  async processUnsummarized(limit = 30): Promise<{ processed: number; failed: number }> {
+  async processUnsummarized(
+    limit = 30,
+  ): Promise<{ processed: number; failed: number }> {
     const unsummarized = await this.db
       .select({ id: articles.id, title: articles.title })
       .from(articles)
@@ -65,7 +67,9 @@ export class AiService {
           .where(eq(articles.id, article.id));
 
         processed++;
-        this.logger.log(`Processed [${processed}/${unsummarized.length}]: ${article.title}`);
+        this.logger.log(
+          `Processed [${processed}/${unsummarized.length}]: ${article.title}`,
+        );
       } catch (err) {
         failed++;
         this.logger.error(`Failed to process article ${article.id}: ${err}`);

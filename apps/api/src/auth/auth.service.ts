@@ -38,7 +38,9 @@ export class AuthService {
     return token;
   }
 
-  async rotateRefreshToken(oldToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+  async rotateRefreshToken(
+    oldToken: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     const result = await this.db
       .select()
       .from(refreshTokens)

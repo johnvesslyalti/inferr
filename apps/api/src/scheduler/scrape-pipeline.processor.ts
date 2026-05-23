@@ -42,7 +42,9 @@ export class ScrapePipelineProcessor implements OnModuleInit {
 
   @Process(SCRAPE_JOB)
   async handle(job: Job) {
-    this.logger.log(`Starting scrape pipeline (attempt ${job.attemptsMade + 1})`);
+    this.logger.log(
+      `Starting scrape pipeline (attempt ${job.attemptsMade + 1})`,
+    );
 
     const scraped = await this.scraperService.scrapeAll();
     this.logger.log(`Scraped — HN: ${scraped.hn}, Dev.to: ${scraped.devto}`);

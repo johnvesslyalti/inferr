@@ -11,7 +11,10 @@ export class UserThrottlerGuard extends ThrottlerGuard {
     return user?.id ?? req.ip ?? 'anonymous';
   }
 
-  protected getRequestResponse(context: ExecutionContext): { req: Request; res: Record<string, unknown> } {
+  protected getRequestResponse(context: ExecutionContext): {
+    req: Request;
+    res: Record<string, unknown>;
+  } {
     const req = context.switchToHttp().getRequest<Request>();
     const res = context.switchToHttp().getResponse<Record<string, unknown>>();
     return { req, res };

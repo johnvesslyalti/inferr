@@ -14,11 +14,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     super(options);
   }
 
-  validate(
-    accessToken: string,
-    refreshToken: string,
-    profile: any,
-  ): any {
+  validate(accessToken: string, refreshToken: string, profile: any): any {
     return {
       id: profile.id,
       displayName: profile.displayName,
