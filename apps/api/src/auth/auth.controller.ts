@@ -18,7 +18,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: 'strict' as const,
+  sameSite: isProduction ? ('none' as const) : ('lax' as const),
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   path: '/',
 };
@@ -109,7 +109,7 @@ export class AuthController {
       await this.authService.revokeRefreshToken(token);
     }
 
-    res.clearCookie('refresh_token', { path: '/' });
+    res.clearCookie('refresh_token', REFRESH_COOKIE_OPTIONS);
     return res.json({ message: 'Logged out' });
   }
 }
