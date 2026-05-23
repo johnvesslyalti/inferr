@@ -1,142 +1,91 @@
 # AI Developer Feed
 
-A personalized news feed for developers powered by AI. Sign in with Google, pick your interests, and get a curated feed of articles from Hacker News and Dev.to with a RAG-based chat interface to ask questions about your feed.
+Personalized developer news feed. Sign in with Google, pick interest tags, get articles from Hacker News and Dev.to ranked by vector similarity. Includes a RAG chat to ask questions against your feed.
 
-## Features
-
-- **Personalized feed** — pgvector similarity search against your interest tags, top 5 articles per visit
-- **RAG chat** — embed your question → retrieve top 3 relevant articles → GPT-4o-mini grounded answer with source links
-- **Daily scraper** — Bull queue cron (07:00 IST) fetches HN Algolia + Dev.to, deduplicates by URL, generates summaries and embeddings
-- **Google OAuth** — sign in, onboard with tag chips, get redirected to your feed
-
-## Tech Stack
+## Stack
 
 | Layer | Tech |
 |---|---|
 | Frontend | Next.js 16, Tailwind CSS, TypeScript |
 | Backend | NestJS 11, TypeScript |
-| Database | PostgreSQL 16 + pgvector |
-| Queue | Redis + Bull |
+| Database | PostgreSQL 16 + pgvector (Neon in prod, Docker locally) |
+| Queue | Redis + Bull (Upstash in prod, Docker locally) |
 | ORM | Drizzle ORM |
 | AI | OpenAI `gpt-4o-mini` + `text-embedding-3-small` |
-| Auth | Google OAuth 2.0 (Passport) |
+| Auth | Google OAuth 2.0 → JWT (HttpOnly refresh cookie + short-lived access token) |
 | Monorepo | pnpm workspaces + Turborepo |
-| Deploy | API → Railway (Docker), Web → Vercel |
+| Deploy | API → Render, Web → Vercel |
 
-## Project Structure
+## Structure
 
 ```
-.
-├── apps/
-│   ├── api/          # NestJS REST API (port 3001)
-│   └── web/          # Next.js frontend (port 3000)
-├── packages/
-│   └── types/        # Shared TypeScript types
-├── Dockerfile        # Multi-stage build for the API
-├── railway.json      # Railway deploy config
-├── vercel.json       # Vercel deploy config
-└── docker-compose.yml
+apps/
+  api/    NestJS REST API       port 3001
+  web/    Next.js frontend      port 3000
+packages/
+  types/  shared TypeScript types
+docs/     architecture notes, OAuth setup, diagrams
 ```
 
-## Prerequisites
+## Local Setup
 
-- Node.js 22.x
-- pnpm 10.x (`npm install -g pnpm`)
-- Docker + Docker Compose
+**Requirements:** Node.js 22, pnpm 10, Docker
+
+```bash
+# 1. Copy env
+cp .env.example .env
+# Fill in GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, OPENAI_API_KEY
+
+# 2. Start Postgres + Redis
+docker compose up -d
+
+# 3. Run migrations
+cd apps/api && pnpm db:migrate
+
+# 4. Start both apps
+cd ../.. && pnpm dev
+```
+
+Docker port mapping: Postgres → `5433`, Redis → `6380` (avoids conflicts with local installs).
 
 ## Environment Variables
 
-Create a single `.env` file at the repo root:
+Single `.env` at repo root, loaded by both apps.
 
 ```env
-# Database (Docker maps postgres to 5433)
 DB_HOST=localhost
 DB_PORT=5433
 DB_USER=postgres
 DB_PASS=postgres
 DB_NAME=ai_feed
-DB_SSL=false          # set to true on Railway
+DB_SSL=false
 
-# Redis (Docker maps redis to 6380)
 REDIS_HOST=localhost
 REDIS_PORT=6380
 
-# API
 API_PORT=3001
 NEXT_PUBLIC_API_URL=http://localhost:3001
 FRONTEND_URL=http://localhost:3000
 
-# Google OAuth
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback
 
-# OpenAI
+JWT_SECRET=
 OPENAI_API_KEY=
 ```
 
-## Local Development
-
-One command starts everything — Docker (Postgres, Redis, API) and the Next.js dev server:
+## Database
 
 ```bash
-pnpm dev
-```
-
-To stop:
-```bash
-docker compose down        # stop containers, keep DB data
-docker compose down -v     # stop and wipe DB (fresh start)
-```
-
-After a fresh DB wipe, re-seed the test user:
-```bash
-npm run db:seed
-```
-
-### Running apps individually
-
-```bash
-# API (NestJS watch mode, port 3001)
-cd apps/api && pnpm dev
-
-# Web (Next.js, port 3000)
-cd apps/web && pnpm dev
-```
-
-### Database commands (from apps/api/)
-
-```bash
-pnpm db:generate   # generate Drizzle migration from schema changes
+cd apps/api
+pnpm db:generate   # generate migration SQL from schema changes
 pnpm db:migrate    # apply pending migrations
 pnpm db:seed       # upsert test user + interests
-pnpm db:studio     # open Drizzle Studio at https://local.drizzle.studio
+pnpm db:studio     # Drizzle Studio at https://local.drizzle.studio
 ```
 
-### Docker commands
-
-```bash
-docker compose ps                    # check service status
-docker compose logs -f api           # tail API logs
-docker compose up -d --build api     # rebuild API image after code changes
-```
-
-## Deployment
-
-### API → Railway
-
-1. Create a Railway project → Deploy from GitHub repo
-2. Add **Postgres** and **Redis** plugins
-3. Set environment variables (use the Railway Postgres connection details for `DB_*` vars, set `DB_SSL=true`)
-4. Railway auto-detects `railway.json` and builds from `Dockerfile`
-
-Migrations run automatically on startup — no manual step needed.
-
-### Web → Vercel
-
-1. Import the repo on Vercel
-2. Set `NEXT_PUBLIC_API_URL` to your Railway API URL
-3. `vercel.json` at root handles the monorepo build
+Migrations run automatically on API startup in production.
 
 ## API Endpoints
 
@@ -144,17 +93,21 @@ Migrations run automatically on startup — no manual step needed.
 |---|---|---|---|
 | GET | `/health` | — | Health check |
 | GET | `/auth/google` | — | Start Google OAuth |
-| GET | `/auth/google/callback` | — | OAuth callback |
-| GET | `/auth/me` | Bearer | Current user |
-| POST | `/users/interests` | Bearer | Save interest tags |
-| GET | `/feed` | Bearer | Personalized article feed |
-| POST | `/chat` | Bearer | RAG chat query |
-| POST | `/scraper/run` | Bearer | Manually trigger scrape |
-| POST | `/ai/process` | Bearer | Embed + summarize articles |
-| POST | `/scheduler/trigger` | Bearer | Trigger scrape pipeline job |
+| GET | `/auth/google/callback` | — | OAuth callback, sets refresh cookie |
+| POST | `/auth/refresh` | cookie | Exchange refresh token for JWT access token |
+| POST | `/auth/logout` | cookie | Revoke refresh token |
+| GET | `/auth/me` | Bearer JWT | Current user |
+| POST | `/users/interests` | Bearer JWT | Save interest tags |
+| GET | `/feed` | Bearer JWT | Personalized article feed |
+| POST | `/chat` | Bearer JWT | RAG chat query |
+| POST | `/scraper/run` | Bearer JWT | Manually trigger scrape |
+| POST | `/ai/process` | Bearer JWT | Embed + summarize articles |
+| POST | `/scheduler/trigger` | Bearer JWT | Trigger scrape pipeline job |
 
-Auth token is the user's UUID returned from OAuth, sent as `Authorization: Bearer <uuid>`.
+Auth flow: Google OAuth sets an HttpOnly `refresh_token` cookie (7 days). Call `POST /auth/refresh` to get a short-lived JWT access token (15 min), sent as `Authorization: Bearer <token>` on protected routes.
 
-## License
+## Deployment
 
-UNLICENSED
+**API (Render):** Set env vars from `.env.render`, deploy from `Dockerfile`. `DATABASE_URL` and `REDIS_URL` override the individual `DB_*` vars.
+
+**Web (Vercel):** Set `NEXT_PUBLIC_API_URL` to the Render API URL. `vercel.json` at root handles the monorepo build pointing to `apps/web`.
