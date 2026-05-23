@@ -23,7 +23,14 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  await db.execute(sql`CREATE EXTENSION IF NOT EXISTS vector`);
+  try {
+    await db.execute(sql`CREATE EXTENSION IF NOT EXISTS vector`);
+  } catch {
+    // Neon and managed Postgres providers pre-install pgvector; the user role
+    // lacks superuser privileges to CREATE EXTENSION but the extension is
+    // already active. Safe to ignore.
+    logger.warn('Could not CREATE EXTENSION vector — assuming it is already enabled');
+  }
   const migrationsFolder = path.join(__dirname, '../drizzle');
   await migrate(db, { migrationsFolder });
   logger.log('Migrations applied');
@@ -39,4 +46,4 @@ async function bootstrap() {
 
   await app.listen(process.env.API_PORT ?? 3001);
 }
-bootstrap();
+void bootstrap();
