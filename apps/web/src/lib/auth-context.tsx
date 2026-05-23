@@ -17,7 +17,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const refreshing = useRef(false);
 
-  const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const api = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 
   const refreshToken = useCallback(async (): Promise<string | null> => {
     if (refreshing.current) return null;

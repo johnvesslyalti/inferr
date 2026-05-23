@@ -16,7 +16,7 @@ function AuthCallbackContent() {
       return;
     }
 
-    const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const api = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
     fetch(`${api}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
       credentials: 'include',

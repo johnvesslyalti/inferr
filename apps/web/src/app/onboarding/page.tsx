@@ -25,7 +25,7 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!ready || !token) return;
-    const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const api = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
     fetch(`${api}/users/interests`, {
       headers: { Authorization: `Bearer ${token}` },
       credentials: 'include',
@@ -48,7 +48,7 @@ export default function OnboardingPage() {
     setSaving(true);
     setError(null);
     try {
-      const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const api = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
       const res = await fetch(`${api}/users/interests`, {
         method: 'POST',
         headers: {

@@ -83,6 +83,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @Get('refresh')
   async refresh(@Req() req: Request, @Res() res: Response) {
     const oldToken = (req.cookies as Record<string, string | undefined>)[
       'refresh_token'

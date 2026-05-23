@@ -31,7 +31,7 @@ export default function FeedPage() {
 
     const fetchFeed = async () => {
       try {
-        const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const api = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
         const res = await fetch(`${api}/feed`, {
           headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',

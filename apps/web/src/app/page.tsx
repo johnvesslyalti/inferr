@@ -6,7 +6,7 @@ import styles from './page.module.css'
 
 const GITHUB_URL = 'https://github.com/johnvesslyalti/ai-developer-feed'
 const X_URL = 'https://x.com/zavxai'
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '')
 
 const features = [
   {
