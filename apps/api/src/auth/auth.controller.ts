@@ -23,10 +23,12 @@ const REFRESH_COOKIE_OPTIONS = {
   path: '/',
 };
 
-
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService, private usersService: UsersService) {}
+  constructor(
+    private authService: AuthService,
+    private usersService: UsersService,
+  ) {}
 
   @Get('google')
   @UseGuards(AuthGuard('google'))
@@ -35,13 +37,23 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
-    const googleProfile = (req.user as any) || {};
+    const googleProfile = req.user as {
+      id?: string;
+      displayName?: string;
+      emails?: { value: string }[];
+      photos?: { value: string }[];
+    };
 
-    if (!googleProfile.id) {
+    if (!googleProfile?.id) {
       throw new UnauthorizedException('Failed to authenticate with Google');
     }
 
-    const user = await this.authService.validateAndUpsertGoogleUser(googleProfile);
+    const user = await this.authService.validateAndUpsertGoogleUser({
+      id: googleProfile.id,
+      displayName: googleProfile.displayName ?? '',
+      emails: googleProfile.emails ?? [],
+      photos: googleProfile.photos ?? [],
+    });
     const refreshToken = await this.authService.createRefreshToken(user.id);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
@@ -52,7 +64,9 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getProfile(@Req() req: Request) {
-    const user = (req.user as any);
+    const user = req.user as
+      | { id: string; email: string; name: string }
+      | undefined;
 
     if (!user) {
       throw new UnauthorizedException('User not found');
@@ -70,13 +84,16 @@ export class AuthController {
 
   @Post('refresh')
   async refresh(@Req() req: Request, @Res() res: Response) {
-    const oldToken = req.cookies?.['refresh_token'];
+    const oldToken = (req.cookies as Record<string, string | undefined>)[
+      'refresh_token'
+    ];
 
     if (!oldToken) {
       throw new UnauthorizedException('No refresh token provided');
     }
 
-    const { accessToken, refreshToken } = await this.authService.rotateRefreshToken(oldToken);
+    const { accessToken, refreshToken } =
+      await this.authService.rotateRefreshToken(oldToken);
 
     res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
     return res.json({ accessToken });
@@ -84,7 +101,9 @@ export class AuthController {
 
   @Post('logout')
   async logout(@Req() req: Request, @Res() res: Response) {
-    const token = req.cookies?.['refresh_token'];
+    const token = (req.cookies as Record<string, string | undefined>)[
+      'refresh_token'
+    ];
 
     if (token) {
       await this.authService.revokeRefreshToken(token);
