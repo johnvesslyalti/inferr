@@ -15,6 +15,13 @@
       "when": 1778911666955,
       "tag": "0001_bumpy_callisto",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778920000000,
+      "tag": "0002_quiet_proudstar",
+      "breakpoints": true
     }
   ]
 }
