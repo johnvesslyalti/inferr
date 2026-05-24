@@ -43,7 +43,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // On mount: restore session from HttpOnly cookie via silent refresh
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshToken().finally(() => setReady(true));
   }, [refreshToken]);
 

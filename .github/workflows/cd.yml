@@ -1,8 +1,10 @@
 name: CD
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
     branches: [main]
+    types: [completed]
 
 concurrency:
   group: cd-main
@@ -12,6 +14,7 @@ jobs:
   deploy-api:
     name: Build & push API image
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
       packages: write
@@ -21,6 +24,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: docker/setup-buildx-action@v3
 
@@ -51,13 +56,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: 'TODO: trigger API rollout'
+        run: echo "Image ${{ steps.meta.outputs.tags }} pushed to GHCR. Add kubectl/fly/compose deploy step here to apply it to the running environment."
+
   deploy-web:
     name: Deploy web to Vercel
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: [deploy-api]
     environment: production
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -69,7 +81,7 @@ jobs:
           cache: pnpm
 
       - name: Install Vercel CLI
-        run: pnpm add -g vercel@latest
+        run: pnpm add -g vercel@41
 
       - name: Pull Vercel environment
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
