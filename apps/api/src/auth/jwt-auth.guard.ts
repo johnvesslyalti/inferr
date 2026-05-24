@@ -21,7 +21,11 @@ export class JwtAuthGuard implements CanActivate {
 
     try {
       // Verifies signature + expiry in-memory — no DB hit
-      const payload = await this.jwtService.verifyAsync(token, {
+      const payload = await this.jwtService.verifyAsync<{
+        sub: string;
+        email: string;
+        name: string;
+      }>(token, {
         secret: process.env.JWT_SECRET,
       });
       request.user = {

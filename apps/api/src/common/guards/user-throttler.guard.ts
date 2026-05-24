@@ -6,9 +6,9 @@ import type { User } from '../../db/schema';
 
 @Injectable()
 export class UserThrottlerGuard extends ThrottlerGuard {
-  protected async getTracker(req: Request): Promise<string> {
+  protected getTracker(req: Request): Promise<string> {
     const user = (req as Request & { user?: User }).user;
-    return user?.id ?? req.ip ?? 'anonymous';
+    return Promise.resolve(user?.id ?? req.ip ?? 'anonymous');
   }
 
   protected getRequestResponse(context: ExecutionContext): {

@@ -37,7 +37,7 @@ export class GoogleTokenGuard implements CanActivate {
 
       request.user = user;
       return true;
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Invalid token');
     }
   }
