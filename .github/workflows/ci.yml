@@ -94,6 +94,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Enable pgvector extension
+        run: psql -h localhost -U postgres -d ai_feed_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+        env:
+          PGPASSWORD: postgres
+
       - name: Run database migrations
         run: pnpm --filter @ai-developer-feed/api db:migrate
 
