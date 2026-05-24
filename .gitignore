@@ -32,3 +32,5 @@ coverage/
 # turbo
 .turbo/
 *.tsbuildinfo
+.vercel
+!.vercel/project.json

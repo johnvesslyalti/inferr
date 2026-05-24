@@ -169,7 +169,7 @@ export default function DashboardPage() {
 
         {/* Features */}
         <section className={styles.featuresSection}>
-          <p className={styles.sectionLabel}>// what&apos;s coming</p>
+          <p className={styles.sectionLabel}>{`// what's coming`}</p>
           <div className={styles.featuresGrid}>
             {features.map((f) => (
               <div key={f.label} className={styles.featureCard}>
