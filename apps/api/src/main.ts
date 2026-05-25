@@ -29,7 +29,9 @@ async function bootstrap() {
     // Neon and managed Postgres providers pre-install pgvector; the user role
     // lacks superuser privileges to CREATE EXTENSION but the extension is
     // already active. Safe to ignore.
-    logger.warn('Could not CREATE EXTENSION vector — assuming it is already enabled');
+    logger.warn(
+      'Could not CREATE EXTENSION vector — assuming it is already enabled',
+    );
   }
   const migrationsFolder = path.join(__dirname, '../drizzle');
   await migrate(db, { migrationsFolder });
