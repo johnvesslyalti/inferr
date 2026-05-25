@@ -16,7 +16,12 @@ export class AuthService {
     @Inject(DRIZZLE) private db: DrizzleDB,
   ) {}
 
-  async validateAndUpsertGoogleUser(googleProfile: any): Promise<User> {
+  async validateAndUpsertGoogleUser(googleProfile: {
+    id: string;
+    displayName: string;
+    emails: { value: string }[];
+    photos: { value: string }[];
+  }): Promise<User> {
     const user = await this.usersService.upsert(googleProfile);
     return user;
   }
