@@ -286,8 +286,6 @@ export default function Home() {
           <span>Built by <a href={X_URL} target="_blank" rel="noopener noreferrer">@zavxai</a></span>
           <span className={styles.footerDot}>·</span>
           <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
-          <span className={styles.footerDot}>·</span>
-          <a href={X_URL} target="_blank" rel="noopener noreferrer">X</a>
         </div>
       </footer>
 
