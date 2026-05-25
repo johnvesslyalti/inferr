@@ -51,18 +51,22 @@
 /* ===== NAVBAR ===== */
 .navbar {
   position: sticky;
-  top: 0;
+  top: 1rem;
   z-index: 100;
-  background-color: transparent;
-  border-bottom: 1px solid transparent;
+  margin: 1rem 1.5rem 0;
+  background: rgba(10, 10, 10, 0.5);
+  border: 1px solid rgba(0, 201, 167, 0.10);
+  border-radius: 14px;
+  backdrop-filter: blur(14px);
   transition: all 0.3s ease;
-  padding: 1.25rem 0;
+  padding: 1rem 0;
 }
 
 .navbar.scrolled {
-  background-color: rgba(10, 10, 10, 0.85);
-  backdrop-filter: blur(10px);
-  border-bottom-color: var(--border);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(0, 201, 167, 0.08) 0%, transparent 70%),
+    rgba(10, 10, 10, 0.88);
+  border-color: rgba(0, 201, 167, 0.18);
 }
 
 .navContent {
@@ -318,18 +322,25 @@
 
 /* ===== FEATURES — ALTERNATING ROWS ===== */
 .featuresWrapper {
-  padding: 5rem 0 0;
-  border-top: 1px solid var(--border);
+  padding: 2rem 0;
   background-color: var(--bg-primary);
 }
 
 .featureRow {
-  padding: 5rem 0;
-  border-bottom: 1px solid var(--border);
+  margin: 0 1.5rem 1.5rem;
+  padding: 4rem 0;
+  border: 1px solid rgba(0, 201, 167, 0.12);
+  border-radius: 20px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 15% 50%, rgba(0, 201, 167, 0.10) 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
 }
 
-.featureRow:nth-child(even) {
-  background-color: var(--bg-secondary);
+.featureRowReverse {
+  background:
+    radial-gradient(ellipse at 85% 50%, rgba(0, 201, 167, 0.10) 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
 }
 
 .featureRowInner {
@@ -577,9 +588,13 @@
 /* ===== HOW IT WORKS ===== */
 .howSection {
   padding: 6rem 0;
-  background-color: #050505;
-  border-top: 1px solid #1a1a1a;
-  border-bottom: 1px solid #1a1a1a;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(0, 201, 167, 0.10) 0%, transparent 55%),
+    linear-gradient(180deg, #0d0d0d 0%, #050505 100%);
+  border: 1px solid rgba(0, 201, 167, 0.12);
+  margin: 2rem 1.5rem;
+  border-radius: 20px;
+  overflow: hidden;
 }
 
 .stepsRow {
@@ -633,8 +648,12 @@
 /* ===== OPEN STACK ===== */
 .stackSection {
   padding: 4rem 2rem;
-  background-color: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(0, 201, 167, 0.10) 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg-secondary) 0%, #060f0c 100%);
+  border: 1px solid rgba(0, 201, 167, 0.12);
+  margin: 2rem 1.5rem;
+  border-radius: 20px;
   text-align: center;
 }
 
@@ -664,7 +683,12 @@
 .finalCTA {
   position: relative;
   padding: 8rem 2rem;
-  background-color: #020d0b;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(0, 201, 167, 0.14) 0%, transparent 60%),
+    linear-gradient(180deg, #020d0b 0%, #031a14 100%);
+  border: 1px solid rgba(0, 201, 167, 0.18);
+  margin: 2rem 1.5rem 3rem;
+  border-radius: 20px;
   text-align: center;
   overflow: hidden;
 }
@@ -701,8 +725,12 @@
 /* ===== FOOTER ===== */
 .footer {
   padding: 2rem;
-  background-color: var(--bg-secondary);
-  border-top: 1px solid var(--border);
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(0, 201, 167, 0.08) 0%, transparent 65%),
+    linear-gradient(180deg, var(--bg-secondary) 0%, #060f0c 100%);
+  border: 1px solid rgba(0, 201, 167, 0.12);
+  margin: 0 1.5rem 1.5rem;
+  border-radius: 20px;
 }
 
 .footerContent {
@@ -794,7 +822,23 @@
   }
 
   .featureRow {
-    padding: 3.5rem 0;
+    padding: 3rem 0;
+    margin-bottom: 1rem;
+  }
+
+  .navbar {
+    margin: 0.75rem 0.75rem 0;
+    border-radius: 10px;
+  }
+
+  .featureRow,
+  .howSection,
+  .stackSection,
+  .finalCTA,
+  .footer {
+    margin-left: 0.75rem;
+    margin-right: 0.75rem;
+    border-radius: 14px;
   }
 }
 
