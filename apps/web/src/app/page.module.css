@@ -57,6 +57,7 @@
   background: rgba(10, 10, 10, 0.5);
   border: 1px solid rgba(0, 201, 167, 0.10);
   border-radius: 14px;
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
   transition: all 0.3s ease;
   padding: 1rem 0;
@@ -357,6 +358,11 @@
 .featureRowReverse .featureRowText,
 .featureRowReverse .featureRowVisual {
   direction: ltr;
+}
+
+.featureRowText {
+  display: flex;
+  flex-direction: column;
 }
 
 .featureIcon {
