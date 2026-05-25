@@ -122,7 +122,7 @@ export default function DashboardPage() {
           <div className={styles.profileCard}>
             <div className={styles.avatar}>
               {user.avatar ? (
-                <img src={user.avatar} alt={user.name} className={styles.avatarImg} />
+                <Image src={user.avatar} alt={user.name} className={styles.avatarImg} width={40} height={40} />
               ) : (
                 <span className={styles.avatarInitials}>{initials}</span>
               )}

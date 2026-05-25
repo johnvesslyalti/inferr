@@ -87,6 +87,31 @@ pnpm db:studio     # Drizzle Studio at https://local.drizzle.studio
 
 Migrations run automatically on API startup in production.
 
+## Feed Flow
+
+How a personalized feed request moves through the system:
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant Next.js
+    participant NestJS
+    participant OpenAI
+    participant Postgres
+
+    Browser->>Next.js: GET /dashboard
+    Next.js->>NestJS: GET /feed (Bearer JWT)
+    NestJS->>Postgres: SELECT tags FROM user_interests WHERE user_id = ?
+    Postgres-->>NestJS: ["typescript", "rust"]
+    NestJS->>OpenAI: embed("typescript rust")
+    OpenAI-->>NestJS: [0.021, -0.043, ...] (1536 floats)
+    NestJS->>Postgres: SELECT title, url, source, summary<br/>FROM articles<br/>ORDER BY embedding <=> query_vector<br/>LIMIT 5
+    Note over Postgres: HNSW index → O(log n) ANN search<br/>cosine distance ranks by semantic closeness
+    Postgres-->>NestJS: top 5 articles (sorted by cosine distance)
+    NestJS-->>Next.js: [{ title, summary, url, source }, ...]
+    Next.js-->>Browser: Rendered feed
+```
+
 ## API Endpoints
 
 | Method | Path | Auth | Description |

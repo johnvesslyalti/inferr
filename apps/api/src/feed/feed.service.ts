@@ -19,6 +19,21 @@ export interface FeedArticle {
   source: string;
 }
 
+export interface DebugFeedArticle {
+  id: string;
+  title: string;
+  summary: string | null;
+  url: string;
+  source: string;
+  cosineDistance: number;
+  similarityScore: number;
+}
+
+export interface DebugFeedResponse {
+  queryText: string;
+  articles: DebugFeedArticle[];
+}
+
 @Injectable()
 export class FeedService {
   private readonly logger = new Logger(FeedService.name);
@@ -84,5 +99,51 @@ export class FeedService {
     }
 
     return articles;
+  }
+
+  async getDebugFeed(userId: string): Promise<DebugFeedResponse> {
+    const interestRow = await this.db
+      .select({ tags: userInterests.tags })
+      .from(userInterests)
+      .where(eq(userInterests.userId, userId))
+      .limit(1);
+
+    const tags = interestRow[0]?.tags ?? [];
+    const queryText =
+      tags.length > 0 ? tags.join(' ') : 'software development programming';
+
+    const embedding = await this.aiService.embed(queryText);
+    const embeddingStr = `[${embedding.join(',')}]`;
+
+    const rows = await this.db.execute<{
+      id: string;
+      title: string;
+      url: string;
+      source: string;
+      summary: string | null;
+      cosine_distance: string;
+    }>(
+      sql`
+        SELECT id, title, url, source, summary,
+          (embedding <=> ${embeddingStr}::vector) AS cosine_distance
+        FROM articles
+        WHERE embedding IS NOT NULL
+        ORDER BY cosine_distance
+        LIMIT 20
+      `,
+    );
+
+    return {
+      queryText,
+      articles: rows.rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        summary: r.summary,
+        url: r.url,
+        source: r.source,
+        cosineDistance: Number(r.cosine_distance),
+        similarityScore: 1 - Number(r.cosine_distance),
+      })),
+    };
   }
 }

@@ -14,4 +14,11 @@ export class FeedController {
     const user = req.user as User;
     return this.feedService.getPersonalizedFeed(user.id);
   }
+
+  @Get('debug')
+  @UseGuards(JwtAuthGuard)
+  async getDebugFeed(@Req() req: Request) {
+    const user = req.user as User;
+    return this.feedService.getDebugFeed(user.id);
+  }
 }
