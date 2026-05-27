@@ -86,6 +86,9 @@ export class AuthController {
   @Post('refresh')
   @Get('refresh')
   async refresh(@Req() req: Request, @Res() res: Response) {
+    console.log('[refresh] cookie header:', req.headers.cookie ?? '(none)');
+    console.log('[refresh] parsed cookies:', JSON.stringify(req.cookies));
+
     const oldToken = (req.cookies as Record<string, string | undefined>)[
       'refresh_token'
     ];
