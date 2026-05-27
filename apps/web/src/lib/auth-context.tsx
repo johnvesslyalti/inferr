@@ -58,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // On mount: restore session via silent refresh
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshToken().then((t) => {
       if (t) scheduleProactiveRefresh(t, () => refreshToken());
     }).finally(() => setReady(true));
