@@ -238,9 +238,11 @@ export default function Home() {
       </div>
 
       {/* How it works */}
+      <div className={styles.sectionInner}>
+        <p className={`${styles.sectionLabel} reveal`}>How it works</p>
+      </div>
       <section className={styles.howSection}>
         <div className={styles.sectionInner}>
-          <p className={`${styles.sectionLabelLight} reveal`}>How it works</p>
           <h2 className={`${styles.sectionHeadingLight} reveal`}>Up and running in 30 seconds</h2>
           <div className={`${styles.stepsRow} reveal`}>
             {steps.map((s) => (
@@ -251,21 +253,6 @@ export default function Home() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Open stack */}
-      <section className={styles.stackSection}>
-        <div className={styles.sectionInner}>
-          <p className={`${styles.stackLine} reveal`}>
-            NestJS · TypeScript · PostgreSQL · pgvector · Redis · gpt-4o-mini · Railway
-          </p>
-          <p className={`${styles.stackSub} reveal`}>
-            One repo. Open source. $7/month to run.{' '}
-            <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-              View on GitHub →
-            </a>
-          </p>
         </div>
       </section>
 
