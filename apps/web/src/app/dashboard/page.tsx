@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useAuth } from '@/src/lib/auth-context';
+import { useAuth, API_BASE } from '@/src/lib/auth-context';
 import styles from './dashboard.module.css';
 
 interface UserProfile {
@@ -49,8 +49,7 @@ export default function DashboardPage() {
 
     const fetchProfile = async () => {
       try {
-        const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
-        const res = await fetch(`${apiUrl}/auth/me`, {
+        const res = await fetch(`${API_BASE}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',
         });

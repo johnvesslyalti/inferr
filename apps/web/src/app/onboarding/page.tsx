@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/src/lib/auth-context';
+import { useAuth, API_BASE } from '@/src/lib/auth-context';
 import styles from './onboarding.module.css';
 
 const TAGS = [
@@ -25,8 +25,7 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!ready || !token) return;
-    const api = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
-    fetch(`${api}/users/interests`, {
+    fetch(`${API_BASE}/users/interests`, {
       headers: { Authorization: `Bearer ${token}` },
       credentials: 'include',
     })
@@ -48,8 +47,7 @@ export default function OnboardingPage() {
     setSaving(true);
     setError(null);
     try {
-      const api = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
-      const res = await fetch(`${api}/users/interests`, {
+      const res = await fetch(`${API_BASE}/users/interests`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

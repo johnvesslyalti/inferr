@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useAuth } from '@/src/lib/auth-context';
+import { useAuth, API_BASE } from '@/src/lib/auth-context';
 import styles from './chat.module.css';
 
 interface Source {
@@ -50,8 +50,7 @@ export default function ChatPage() {
     }
 
     try {
-      const api = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
-      const res = await fetch(`${api}/chat`, {
+      const res = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useAuth } from '@/src/lib/auth-context';
+import { useAuth, API_BASE } from '@/src/lib/auth-context';
 import styles from './feed.module.css';
 
 interface Article {
@@ -31,8 +31,7 @@ export default function FeedPage() {
 
     const fetchFeed = async () => {
       try {
-        const api = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
-        const res = await fetch(`${api}/feed`, {
+        const res = await fetch(`${API_BASE}/feed`, {
           headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',
         });

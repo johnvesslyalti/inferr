@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 
+export const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001').replace(/\/+$/, '');
+
 interface AuthContextValue {
   token: string | null;
   ready: boolean;
@@ -16,50 +18,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setTokenState] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const refreshing = useRef(false);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const api = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
+  const scheduleProactiveRefresh = useCallback((accessToken: string, doRefresh: () => void) => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    try {
+      const { exp } = JSON.parse(atob(accessToken.split('.')[1])) as { exp: number };
+      const msUntilExpiry = exp * 1000 - Date.now();
+      const delay = Math.max(msUntilExpiry - 60_000, 10_000);
+      refreshTimerRef.current = setTimeout(doRefresh, delay);
+    } catch {
+      // malformed token — skip scheduling
+    }
+  }, []);
 
   const refreshToken = useCallback(async (): Promise<string | null> => {
     if (refreshing.current) return null;
     refreshing.current = true;
-
     try {
-      const res = await fetch(`${api}/auth/refresh`, {
-        method: 'POST',
-        credentials: 'include', // sends the HttpOnly refresh_token cookie
-      });
-
-      if (!res.ok) return null;
-
-      const data = await res.json();
-      setTokenState(data.accessToken);
-      return data.accessToken;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await fetch(`${API_BASE}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const data = await res.json() as { accessToken: string };
+          setTokenState(data.accessToken);
+          return data.accessToken;
+        }
+        if (attempt === 0) await new Promise(r => setTimeout(r, 1500));
+      }
+      return null;
     } catch {
       return null;
     } finally {
       refreshing.current = false;
     }
-  }, [api]);
+  }, []);
 
-  // On mount: restore session from HttpOnly cookie via silent refresh
+  // On mount: restore session via silent refresh
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    refreshToken().finally(() => setReady(true));
-  }, [refreshToken]);
+    refreshToken().then((t) => {
+      if (t) scheduleProactiveRefresh(t, () => refreshToken());
+    }).finally(() => setReady(true));
+
+    return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setToken = useCallback((newToken: string) => {
     setTokenState(newToken);
-  }, []);
+    scheduleProactiveRefresh(newToken, () => refreshToken());
+  }, [scheduleProactiveRefresh, refreshToken]);
 
   const signOut = useCallback(async () => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     try {
-      await fetch(`${api}/auth/logout`, {
+      await fetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       });
     } catch {}
     setTokenState(null);
-  }, [api]);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ token, ready, setToken, signOut, refreshToken }}>

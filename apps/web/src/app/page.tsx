@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import styles from './page.module.css'
+import { API_BASE as API_URL, useAuth } from '@/src/lib/auth-context'
 
 const GITHUB_URL = 'https://github.com/johnvesslyalti/ai-developer-feed'
 const X_URL = 'https://x.com/zavxai'
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '')
 
 const features = [
   {
@@ -108,6 +109,12 @@ const steps = [
 
 export default function Home() {
   const [scrolled, setScrolled] = useState(false)
+  const router = useRouter()
+  const { token, ready } = useAuth()
+
+  useEffect(() => {
+    if (ready && token) router.replace('/feed')
+  }, [ready, token, router])
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50)
