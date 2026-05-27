@@ -89,6 +89,9 @@ export class AuthController {
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
   async refresh(@Req() req: Request, @Res() res: Response) {
+    console.log('[refresh] cookie header:', req.headers.cookie ?? '(none)');
+    console.log('[refresh] parsed cookies:', JSON.stringify(req.cookies));
+
     const oldToken = (req.cookies as Record<string, string | undefined>)[
       'refresh_token'
     ];
