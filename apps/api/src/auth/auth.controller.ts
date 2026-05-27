@@ -20,7 +20,6 @@ const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isProduction,
   sameSite: isProduction ? ('none' as const) : ('lax' as const),
-  domain: isProduction ? '.inferr.xyz' : undefined,
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   path: '/',
 };
