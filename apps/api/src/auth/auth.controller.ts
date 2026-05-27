@@ -8,6 +8,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -85,6 +86,8 @@ export class AuthController {
 
   @Post('refresh')
   @Get('refresh')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   async refresh(@Req() req: Request, @Res() res: Response) {
     const oldToken = (req.cookies as Record<string, string | undefined>)[
       'refresh_token'
