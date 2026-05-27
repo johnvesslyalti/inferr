@@ -21,14 +21,6 @@
   margin-bottom: 2rem;
 }
 
-.sectionLabelLight {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: rgba(255,255,255,0.4);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 1rem;
-}
 
 .sectionHeading {
   font-family: var(--font-body);
@@ -651,39 +643,6 @@
   line-height: 1.65;
 }
 
-/* ===== OPEN STACK ===== */
-.stackSection {
-  padding: 4rem 2rem;
-  background:
-    radial-gradient(ellipse at 50% 50%, rgba(0, 201, 167, 0.10) 0%, transparent 60%),
-    linear-gradient(180deg, var(--bg-secondary) 0%, #060f0c 100%);
-  border: 1px solid rgba(0, 201, 167, 0.12);
-  margin: 2rem 1.5rem;
-  border-radius: 20px;
-  text-align: center;
-}
-
-.stackLine {
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  letter-spacing: 0.04em;
-  margin-bottom: 0.75rem;
-}
-
-.stackSub {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-}
-
-.stackSub a {
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.stackSub a:hover {
-  color: var(--accent-light);
-}
 
 /* ===== FINAL CTA ===== */
 .finalCTA {
@@ -839,7 +798,6 @@
 
   .featureRow,
   .howSection,
-  .stackSection,
   .finalCTA,
   .footer {
     margin-left: 0.75rem;
@@ -848,7 +806,7 @@
   }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 480px) {
   .headline {
     font-size: 2rem;
   }
