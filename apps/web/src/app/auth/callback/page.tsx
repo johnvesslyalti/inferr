@@ -6,28 +6,37 @@ import { useAuth, API_BASE } from '@/src/lib/auth-context';
 
 function AuthCallbackContent() {
   const router = useRouter();
-  const { ready, token } = useAuth();
+  const { ready, token, refreshToken } = useAuth();
 
   useEffect(() => {
     if (!ready) return;
 
-    if (!token) {
-      router.push('/');
-      return;
-    }
-
-    fetch(`${API_BASE}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-      credentials: 'include',
-    })
-      .then((r) => r.json())
-      .then((user) => {
+    const complete = async () => {
+      // AuthProvider's mount-time refresh may have already run before OAuth
+      // (e.g. user clicked login from the landing page). In that case token is
+      // null here even though the OAuth cookie is now set. Retry explicitly.
+      let accessToken = token;
+      if (!accessToken) {
+        accessToken = await refreshToken();
+      }
+      if (!accessToken) {
+        router.push('/');
+        return;
+      }
+      try {
+        const r = await fetch(`${API_BASE}/auth/me`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          credentials: 'include',
+        });
+        const user = await r.json() as { hasInterests: boolean };
         router.push(user.hasInterests ? '/feed' : '/onboarding');
-      })
-      .catch(() => {
+      } catch {
         router.push('/onboarding');
-      });
-  }, [ready, token, router]);
+      }
+    };
+
+    complete();
+  }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
