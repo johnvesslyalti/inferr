@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/src/lib/auth-context';
+import { useAuth, API_BASE } from '@/src/lib/auth-context';
 
 function AuthCallbackContent() {
   const router = useRouter();
@@ -16,8 +16,7 @@ function AuthCallbackContent() {
       return;
     }
 
-    const api = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
-    fetch(`${api}/auth/me`, {
+    fetch(`${API_BASE}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
       credentials: 'include',
     })
