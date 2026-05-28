@@ -1,6 +1,6 @@
 import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import * as crypto from 'crypto';
 import { UsersService } from '../users/users.service';
 import { DRIZZLE } from '../db/drizzle.provider';
@@ -102,13 +102,24 @@ export class AuthService {
             const newHash = this.hashToken(newRaw);
             const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-            await this.db
-              .insert(refreshTokens)
-              .values({ userId: user.id, token: newHash, expiresAt });
-            await this.db
-              .update(refreshTokens)
-              .set({ revoked: true, revokedAt: new Date(), replacedByHash: newHash })
-              .where(eq(refreshTokens.token, current.replacedByHash));
+            let rotated = false;
+            await this.db.transaction(async (tx) => {
+              await tx
+                .insert(refreshTokens)
+                .values({ userId: user.id, token: newHash, expiresAt });
+              const result = await tx
+                .update(refreshTokens)
+                .set({ revoked: true, revokedAt: new Date(), replacedByHash: newHash })
+                .where(
+                  and(
+                    eq(refreshTokens.token, current.replacedByHash!),
+                    eq(refreshTokens.revoked, false),
+                  ),
+                );
+              rotated = (result.rowCount ?? 0) > 0;
+            });
+
+            if (!rotated) break;
 
             return { accessToken: this.signAccessToken(user), refreshToken: newRaw };
           }
