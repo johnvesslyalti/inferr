@@ -136,13 +136,15 @@ export class AuthService {
     const newHash = this.hashToken(newRaw);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    await this.db
-      .insert(refreshTokens)
-      .values({ userId: stored.userId, token: newHash, expiresAt });
-    await this.db
-      .update(refreshTokens)
-      .set({ revoked: true, revokedAt: new Date(), replacedByHash: newHash })
-      .where(eq(refreshTokens.token, tokenHash));
+    await this.db.transaction(async (tx) => {
+      await tx
+        .insert(refreshTokens)
+        .values({ userId: stored.userId, token: newHash, expiresAt });
+      await tx
+        .update(refreshTokens)
+        .set({ revoked: true, revokedAt: new Date(), replacedByHash: newHash })
+        .where(eq(refreshTokens.token, tokenHash));
+    });
 
     const user = await this.usersService.findById(stored.userId);
     if (!user) throw new UnauthorizedException('User not found');
