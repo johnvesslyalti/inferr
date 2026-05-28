@@ -70,50 +70,57 @@ export class AuthService {
 
     // Reuse detection: if revoked within the grace window, the client probably
     // sent the old token before receiving the rotated cookie (e.g. two tabs
-    // loading simultaneously). Issue a fresh rotation from the replacement.
+    // loading simultaneously). Follow the replacement chain until we find a
+    // valid token to rotate, or exhaust the chain.
     if (stored.revoked) {
       const revokedRecently =
         stored.revokedAt !== null &&
         stored.revokedAt !== undefined &&
         Date.now() - stored.revokedAt.getTime() < GRACE_WINDOW_MS;
 
-      if (revokedRecently && stored.replacedByHash) {
-        const replacementResult = await this.db
-          .select()
-          .from(refreshTokens)
-          .where(eq(refreshTokens.token, stored.replacedByHash))
-          .limit(1);
+      if (revokedRecently) {
+        const MAX_CHAIN_DEPTH = 10;
+        let current = stored;
 
-        const replacement = replacementResult[0];
-        if (
-          replacement &&
-          !replacement.revoked &&
-          replacement.expiresAt > new Date()
-        ) {
-          const user = await this.usersService.findById(replacement.userId);
-          if (!user) throw new UnauthorizedException('User not found');
+        for (let hop = 0; hop < MAX_CHAIN_DEPTH; hop++) {
+          if (!current.replacedByHash) break;
 
-          // Rotate the replacement token so the stale tab gets a fresh one
-          const newRaw = crypto.randomBytes(64).toString('hex');
-          const newHash = this.hashToken(newRaw);
-          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+          const nextResult = await this.db
+            .select()
+            .from(refreshTokens)
+            .where(eq(refreshTokens.token, current.replacedByHash))
+            .limit(1);
 
-          await this.db
-            .insert(refreshTokens)
-            .values({ userId: user.id, token: newHash, expiresAt });
-          await this.db
-            .update(refreshTokens)
-            .set({
-              revoked: true,
-              revokedAt: new Date(),
-              replacedByHash: newHash,
-            })
-            .where(eq(refreshTokens.token, stored.replacedByHash));
+          const next = nextResult[0];
+          if (!next) break;
 
-          return {
-            accessToken: this.signAccessToken(user),
-            refreshToken: newRaw,
-          };
+          if (!next.revoked && next.expiresAt > new Date()) {
+            const user = await this.usersService.findById(next.userId);
+            if (!user) throw new UnauthorizedException('User not found');
+
+            const newRaw = crypto.randomBytes(64).toString('hex');
+            const newHash = this.hashToken(newRaw);
+            const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+            await this.db
+              .insert(refreshTokens)
+              .values({ userId: user.id, token: newHash, expiresAt });
+            await this.db
+              .update(refreshTokens)
+              .set({ revoked: true, revokedAt: new Date(), replacedByHash: newHash })
+              .where(eq(refreshTokens.token, current.replacedByHash));
+
+            return { accessToken: this.signAccessToken(user), refreshToken: newRaw };
+          }
+
+          // next is also revoked — continue only if still within the grace window
+          const nextRevokedRecently =
+            next.revokedAt !== null &&
+            next.revokedAt !== undefined &&
+            Date.now() - next.revokedAt.getTime() < GRACE_WINDOW_MS;
+
+          if (!nextRevokedRecently) break;
+          current = next;
         }
       }
 
