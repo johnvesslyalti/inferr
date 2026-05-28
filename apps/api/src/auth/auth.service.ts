@@ -92,7 +92,7 @@ export class AuthService {
             .limit(1);
 
           const next = nextResult[0];
-          if (!next) break;
+          if (!next || next.userId !== stored.userId) break;
 
           if (!next.revoked && next.expiresAt > new Date()) {
             const user = await this.usersService.findById(next.userId);
