@@ -16,10 +16,14 @@ export class SchedulerService {
   async runDailyScrape() {
     this.logger.log('Starting daily scrape pipeline (01:30 UTC)');
 
-    const scraped = await this.scraperService.scrapeAll();
-    this.logger.log(`Scraped — HN: ${scraped.hn}, Dev.to: ${scraped.devto}`);
+    try {
+      const scraped = await this.scraperService.scrapeAll();
+      this.logger.log(`Scraped — HN: ${scraped.hn}, Dev.to: ${scraped.devto}`);
 
-    const { processed, failed } = await this.aiService.processUnsummarized(50);
-    this.logger.log(`Summarized/embedded: ${processed} ok, ${failed} failed`);
+      const { processed, failed } = await this.aiService.processUnsummarized(50);
+      this.logger.log(`Summarized/embedded: ${processed} ok, ${failed} failed`);
+    } catch (err) {
+      this.logger.error('Daily scrape pipeline failed', err instanceof Error ? err.stack : String(err));
+    }
   }
 }

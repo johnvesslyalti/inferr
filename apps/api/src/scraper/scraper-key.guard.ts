@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { timingSafeEqual } from 'crypto';
 
 @Injectable()
 export class ScraperKeyGuard implements CanActivate {
@@ -19,7 +20,17 @@ export class ScraperKeyGuard implements CanActivate {
     const key = authHeader.slice(7);
     const expected = process.env.SCRAPER_API_KEY;
 
-    if (!expected || key !== expected) {
+    if (!expected) {
+      throw new UnauthorizedException('Invalid API key');
+    }
+
+    const keyBuf = Buffer.from(key);
+    const expectedBuf = Buffer.from(expected);
+
+    if (
+      keyBuf.length !== expectedBuf.length ||
+      !timingSafeEqual(keyBuf, expectedBuf)
+    ) {
       throw new UnauthorizedException('Invalid API key');
     }
 
