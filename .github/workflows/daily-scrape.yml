@@ -16,4 +16,5 @@ jobs:
             -H "Content-Type: application/json" \
             --fail \
             --retry 3 \
-            --retry-delay 30
+            --retry-delay 30 \
+            --retry-all-errors
