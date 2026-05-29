@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import styles from './page.module.css'
 import { API_BASE as API_URL, useAuth } from '@/src/lib/auth-context'
+import { wakeServer } from '@/src/lib/server-status'
 
 const GITHUB_URL = 'https://github.com/johnvesslyalti/ai-developer-feed'
 const X_URL = 'https://x.com/zavxai'
@@ -109,8 +110,19 @@ const steps = [
 
 export default function Home() {
   const [scrolled, setScrolled] = useState(false)
+  const [signingIn, setSigningIn] = useState(false)
   const router = useRouter()
   const { token, ready } = useAuth()
+
+  // Pre-warm the (possibly asleep) Render API before navigating to OAuth, so
+  // the user sees our wake overlay instead of Render's cold-start page.
+  const handleSignIn = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault()
+    if (signingIn) return
+    setSigningIn(true)
+    await wakeServer()
+    window.location.href = `${API_URL}/auth/google`
+  }
 
   useEffect(() => {
     if (ready && token) router.replace('/feed')
@@ -143,7 +155,7 @@ export default function Home() {
             <span className={styles.logoText}>inferr</span>
           </div>
           <div className={styles.navRight}>
-            <a href={`${API_URL}/auth/google`} className={styles.signInBtn}>
+            <a href={`${API_URL}/auth/google`} onClick={handleSignIn} className={styles.signInBtn}>
               Sign in with Google →
             </a>
           </div>
@@ -167,7 +179,7 @@ export default function Home() {
                 and surfaces only what&apos;s relevant to your stack — automatically.
               </p>
               <div className={`${styles.heroActions} reveal`}>
-                <a href={`${API_URL}/auth/google`} className={styles.primaryBtn}>
+                <a href={`${API_URL}/auth/google`} onClick={handleSignIn} className={styles.primaryBtn}>
                   Sign in with Google →
                 </a>
               </div>
@@ -267,7 +279,7 @@ export default function Home() {
             Free. Takes 30 seconds to set up.
           </p>
           <div className="reveal">
-            <a href={`${API_URL}/auth/google`} className={styles.primaryBtnLight}>
+            <a href={`${API_URL}/auth/google`} onClick={handleSignIn} className={styles.primaryBtnLight}>
               Sign in with Google →
             </a>
           </div>
