@@ -1,16 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bull';
-import type { Queue } from 'bull';
 import { sql } from 'drizzle-orm';
 import { eq } from 'drizzle-orm';
 import { DRIZZLE } from '../db/drizzle.provider';
 import type { DrizzleDB } from '../db/drizzle.provider';
 import { userInterests } from '../db/schema';
 import { AiService } from '../ai/ai.service';
-import {
-  SCRAPE_QUEUE,
-  SCRAPE_JOB,
-} from '../scheduler/scrape-pipeline.processor';
 
 export interface FeedArticle {
   title: string;
@@ -41,7 +35,6 @@ export class FeedService {
   constructor(
     @Inject(DRIZZLE) private db: DrizzleDB,
     private readonly aiService: AiService,
-    @InjectQueue(SCRAPE_QUEUE) private readonly scrapeQueue: Queue,
   ) {}
 
   async getPersonalizedFeed(userId: string): Promise<FeedArticle[]> {
@@ -84,18 +77,7 @@ export class FeedService {
     }));
 
     if (articles.length === 0) {
-      const jobs = await this.scrapeQueue.getJobs(['active', 'waiting']);
-      const alreadyRunning = jobs.some(
-        (j) => j.name === SCRAPE_JOB && !j.opts.repeat,
-      );
-      if (!alreadyRunning) {
-        this.logger.log('No articles found — triggering scraper automatically');
-        await this.scrapeQueue.add(
-          SCRAPE_JOB,
-          {},
-          { attempts: 3, backoff: { type: 'exponential', delay: 10_000 } },
-        );
-      }
+      this.logger.log('No articles found — trigger POST /scraper/run manually');
     }
 
     return articles;
