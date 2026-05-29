@@ -45,6 +45,8 @@ export const articles = pgTable(
     title: varchar('title', { length: 500 }).notNull(),
     url: varchar('url', { length: 2048 }).notNull().unique(),
     source: varchar('source', { length: 255 }).notNull(),
+    content: text('content'),
+    contentScrapedAt: timestamp('content_scraped_at'),
     summary: text('summary'),
     embedding: vector('embedding', 1536),
     publishedAt: timestamp('published_at'),

@@ -109,7 +109,11 @@ export class AuthService {
                 .values({ userId: user.id, token: newHash, expiresAt });
               const result = await tx
                 .update(refreshTokens)
-                .set({ revoked: true, revokedAt: new Date(), replacedByHash: newHash })
+                .set({
+                  revoked: true,
+                  revokedAt: new Date(),
+                  replacedByHash: newHash,
+                })
                 .where(
                   and(
                     eq(refreshTokens.token, current.replacedByHash!),
@@ -121,7 +125,10 @@ export class AuthService {
 
             if (!rotated) break;
 
-            return { accessToken: this.signAccessToken(user), refreshToken: newRaw };
+            return {
+              accessToken: this.signAccessToken(user),
+              refreshToken: newRaw,
+            };
           }
 
           // next is also revoked — continue only if still within the grace window
