@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth, API_BASE } from '@/src/lib/auth-context';
+import { apiFetch } from '@/src/lib/server-status';
+import { getSessionHint, readFeedCache, writeFeedCache } from '@/src/lib/local-store';
 import styles from './feed.module.css';
 
 interface Article {
@@ -18,34 +20,71 @@ const SOURCE_LABEL: Record<string, string> = {
   devto: 'Dev.to',
 };
 
+// Two feeds are equal when they list the same articles in the same order —
+// lets us skip a repaint when the background revalidation finds nothing new.
+function sameFeed(a: Article[], b: Article[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((article, i) => article.url === b[i].url);
+}
+
 export default function FeedPage() {
   const router = useRouter();
   const { token, ready, signOut: authSignOut } = useAuth();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const userIdRef = useRef<string | null>(null);
+  const hasCacheRef = useRef(false);
 
+  // Hydrate from the last-seen feed instantly (no network) so a returning user
+  // sees content immediately, even while the Render instance is still waking.
+  useEffect(() => {
+    const { userId } = getSessionHint();
+    userIdRef.current = userId;
+    const cached = readFeedCache<Article[]>(userId);
+    if (cached && cached.length > 0) {
+      // One-time hydration from the local cache before any network call.
+      /* eslint-disable react-hooks/set-state-in-effect */
+      setArticles(cached);
+      hasCacheRef.current = true;
+      setLoading(false);
+      /* eslint-enable react-hooks/set-state-in-effect */
+    }
+  }, []);
+
+  // Revalidate in the background once auth resolves (stale-while-revalidate):
+  // fetch fresh data, repaint only if it changed, and persist for next visit.
   useEffect(() => {
     if (!ready) return;
     if (!token) { router.push('/'); return; }
 
-    const fetchFeed = async () => {
+    let cancelled = false;
+    const revalidate = async () => {
       try {
-        const res = await fetch(`${API_BASE}/feed`, {
+        const res = await apiFetch(`${API_BASE}/feed`, {
           headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',
         });
 
         if (!res.ok) throw new Error('Failed to load feed');
-        setArticles(await res.json());
+        const fresh = (await res.json()) as Article[];
+        if (cancelled) return;
+
+        setArticles((prev) => (sameFeed(prev, fresh) ? prev : fresh));
+        writeFeedCache(userIdRef.current, fresh);
+        setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Something went wrong');
+        // Only surface an error if we have nothing cached to fall back on.
+        if (!cancelled && !hasCacheRef.current) {
+          setError(err instanceof Error ? err.message : 'Something went wrong');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
-    fetchFeed();
+    revalidate();
+    return () => { cancelled = true; };
   }, [router, token, ready]);
 
   const signOut = async () => {
