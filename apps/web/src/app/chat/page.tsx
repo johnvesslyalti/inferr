@@ -104,6 +104,9 @@ export default function ChatPage() {
         </div>
         <div className={styles.navRight}>
           <a href="/feed" className={styles.navLink}>feed</a>
+          <a href="/market" className={`${styles.navLink} ${styles.navLinkNew}`}>
+              tech market <span className={styles.newBadge}>new</span>
+            </a>
           <a href="/onboarding" className={styles.navLink}>interests</a>
           <button onClick={signOut} className={styles.signOut}>sign out</button>
         </div>

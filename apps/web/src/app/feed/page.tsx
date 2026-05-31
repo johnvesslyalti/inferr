@@ -101,6 +101,9 @@ export default function FeedPage() {
         </div>
         <div className={styles.navRight}>
           <a href="/chat" className={styles.navLink}>chat</a>
+          <a href="/market" className={`${styles.navLink} ${styles.navLinkNew}`}>
+              tech market <span className={styles.newBadge}>new</span>
+            </a>
           <a href="/onboarding" className={styles.navLink}>edit interests</a>
           <button onClick={signOut} className={styles.signOut}>sign out</button>
         </div>
