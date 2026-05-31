@@ -1,80 +1,48 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useAuth, API_BASE } from '@/src/lib/auth-context';
-import { apiFetch } from '@/src/lib/server-status';
+import { useAuth } from '@/src/lib/auth-context';
 import { ProfileMenu } from '@/src/components/ProfileMenu';
 import styles from './market.module.css';
 
-interface TrendingRole {
-  role: string;
-  demand: number;
-  trend: string;
-}
+const PREVIEW_SKILLS = [
+  { skill: 'TypeScript', count: 42 },
+  { skill: 'React', count: 38 },
+  { skill: 'AWS', count: 31 },
+  { skill: 'Python', count: 27 },
+  { skill: 'Node.js', count: 24 },
+  { skill: 'Docker', count: 19 },
+];
 
-interface MarketReport {
-  roles: TrendingRole[];
-  generatedAt: string;
-}
-
-function DemandDots({ level }: { level: number }) {
-  return (
-    <div className={styles.dots}>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} className={i < level ? styles.dotFilled : styles.dotEmpty} />
-      ))}
-    </div>
-  );
-}
+const PREVIEW_ROLES = [
+  { category: 'Software Development', count: 84 },
+  { category: 'DevOps / SRE', count: 31 },
+  { category: 'Data / ML', count: 22 },
+  { category: 'Design', count: 14 },
+];
 
 export default function TechMarketPage() {
   const router = useRouter();
   const { token, ready } = useAuth();
-  const [report, setReport] = useState<MarketReport | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (ready && !token) { router.push('/'); return; }
-    if (!ready) return;
-
-    apiFetch(`${API_BASE}/jobs/market`)
-      .then((r) => {
-        if (!r.ok) throw new Error('Failed to load market data');
-        return r.json() as Promise<MarketReport>;
-      })
-      .then(setReport)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Something went wrong'))
-      .finally(() => setLoading(false));
+    if (ready && !token) { router.push('/'); }
   }, [ready, token, router]);
 
-  if (!ready || !token || loading) {
+  if (!ready || !token) {
     return (
       <div className={styles.page}>
         <div className={styles.loadingScreen}>
           <div className={styles.spinner} />
-          <p className={styles.loadingText}>analysing market data…</p>
         </div>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className={styles.page}>
-        <div className={styles.loadingScreen}>
-          <p className={styles.errorText}>{error}</p>
-          <button onClick={() => window.location.reload()} className={styles.retryBtn}>Retry</button>
-        </div>
-      </div>
-    );
-  }
-
-  const updatedAt = report
-    ? new Date(report.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    : '—';
+  const maxSkill = PREVIEW_SKILLS[0].count;
+  const maxRole = PREVIEW_ROLES[0].count;
 
   return (
     <div className={styles.page}>
@@ -91,24 +59,62 @@ export default function TechMarketPage() {
       <main className={styles.main}>
         <div className={styles.header}>
           <div className={styles.headerTop}>
-            <span className={styles.liveDot} />
-            <span className={styles.label}>AI-analysed · Updated {updatedAt}</span>
+            <span className={styles.comingSoonBadge}>COMING SOON</span>
           </div>
-          <h1 className={styles.title}>Trending Roles</h1>
-          <p className={styles.subtitle}>Based on real remote job postings right now</p>
+          <h1 className={styles.title}>Tech Market</h1>
+          <p className={styles.subtitle}>
+            Daily snapshot of what the industry is hiring for — trending skills, hot roles, and top companies from live job data.
+          </p>
         </div>
 
-        <div className={styles.roleList}>
-          {report?.roles.map((r, i) => (
-            <div key={r.role} className={styles.roleCard}>
-              <span className={styles.roleIndex}>{String(i + 1).padStart(2, '0')}</span>
-              <div className={styles.roleInfo}>
-                <p className={styles.roleName}>{r.role}</p>
-                <span className={styles.roleTrend}>{r.trend}</span>
+        {/* Preview blurred out */}
+        <div className={styles.previewWrap}>
+          <div className={styles.previewOverlay}>
+            <div className={styles.overlayInner}>
+              <div className={styles.overlayIcon}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
               </div>
-              <DemandDots level={r.demand} />
+              <p className={styles.overlayTitle}>Market data is being wired up</p>
+              <p className={styles.overlayDesc}>Live job trends from Remotive — refreshed daily. Check back soon.</p>
             </div>
-          ))}
+          </div>
+
+          <div className={styles.previewBlur}>
+            {/* Skills preview */}
+            <div className={styles.card}>
+              <p className={styles.cardTitle}>Top Skills in Demand</p>
+              <div className={styles.skillsList}>
+                {PREVIEW_SKILLS.map((s, i) => (
+                  <div key={s.skill} className={styles.skillRow}>
+                    <span className={styles.skillRank}>{String(i + 1).padStart(2, '0')}</span>
+                    <span className={styles.skillName}>{s.skill}</span>
+                    <div className={styles.barWrap}>
+                      <div className={styles.bar} style={{ width: `${Math.round((s.count / maxSkill) * 100)}%` }} />
+                    </div>
+                    <span className={styles.skillCount}>{s.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Roles preview */}
+            <div className={styles.card}>
+              <p className={styles.cardTitle}>Role Breakdown</p>
+              <div className={styles.rolesList}>
+                {PREVIEW_ROLES.map((r) => (
+                  <div key={r.category} className={styles.roleRow}>
+                    <span className={styles.roleName}>{r.category}</span>
+                    <div className={styles.barWrap}>
+                      <div className={`${styles.bar} ${styles.barAlt}`} style={{ width: `${Math.round((r.count / maxRole) * 100)}%` }} />
+                    </div>
+                    <span className={styles.roleCount}>{r.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </main>
     </div>
