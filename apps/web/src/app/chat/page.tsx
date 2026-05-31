@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth, API_BASE } from '@/src/lib/auth-context';
+import { apiFetch } from '@/src/lib/server-status';
 import styles from './chat.module.css';
 
 interface Source {
@@ -50,7 +51,7 @@ export default function ChatPage() {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/chat`, {
+      const res = await apiFetch(`${API_BASE}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

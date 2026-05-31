@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth, API_BASE } from '@/src/lib/auth-context';
+import { apiFetch } from '@/src/lib/server-status';
 import styles from './dashboard.module.css';
 
 interface UserProfile {
@@ -49,7 +50,7 @@ export default function DashboardPage() {
 
     const fetchProfile = async () => {
       try {
-        const res = await fetch(`${API_BASE}/auth/me`, {
+        const res = await apiFetch(`${API_BASE}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',
         });

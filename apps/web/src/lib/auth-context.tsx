@@ -1,8 +1,10 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { API_BASE, apiFetch } from './server-status';
+import { rememberSession, forgetSession, decodeUserId } from './local-store';
 
-export const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001').replace(/\/+$/, '');
+export { API_BASE } from './server-status';
 
 interface AuthContextValue {
   token: string | null;
@@ -37,13 +39,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshing.current = true;
     try {
       for (let attempt = 0; attempt < 2; attempt++) {
-        const res = await fetch(`${API_BASE}/auth/refresh`, {
+        const res = await apiFetch(`${API_BASE}/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
         });
         if (res.ok) {
           const data = await res.json() as { accessToken: string };
           setTokenState(data.accessToken);
+          rememberSession(decodeUserId(data.accessToken));
           return data.accessToken;
         }
         if (attempt === 0) await new Promise(r => setTimeout(r, 1500));
@@ -70,17 +73,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const setToken = useCallback((newToken: string) => {
     setTokenState(newToken);
+    rememberSession(decodeUserId(newToken));
     scheduleProactiveRefresh(newToken, () => refreshToken());
   }, [scheduleProactiveRefresh, refreshToken]);
 
   const signOut = useCallback(async () => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     try {
-      await fetch(`${API_BASE}/auth/logout`, {
+      await apiFetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       });
     } catch {}
+    forgetSession();
     setTokenState(null);
   }, []);
 

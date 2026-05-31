@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, API_BASE } from '@/src/lib/auth-context';
+import { apiFetch } from '@/src/lib/server-status';
 
 function AuthCallbackContent() {
   const router = useRouter();
@@ -24,7 +25,7 @@ function AuthCallbackContent() {
         return;
       }
       try {
-        const r = await fetch(`${API_BASE}/auth/me`, {
+        const r = await apiFetch(`${API_BASE}/auth/me`, {
           headers: { Authorization: `Bearer ${accessToken}` },
           credentials: 'include',
         });
