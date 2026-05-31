@@ -1,0 +1,292 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── nav ── */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-primary);
+  z-index: 10;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logoText {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.navRight {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.navLink {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.navLink:hover {
+  color: var(--accent);
+}
+
+.signOut {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: color 0.15s ease;
+}
+
+.signOut:hover {
+  color: var(--text-primary);
+}
+
+/* ── loading / error ── */
+.loadingScreen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loadingText {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.errorText {
+  color: #f87171;
+  font-size: 0.9rem;
+}
+
+.retryBtn {
+  padding: 0.5rem 1.25rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* ── main content ── */
+.main {
+  flex: 1;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+.header {
+  margin-bottom: 2.5rem;
+}
+
+.marketBadge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.6rem;
+  background: rgba(0, 201, 167, 0.1);
+  color: var(--accent);
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+/* ── two-column layout ── */
+.sections {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .sections {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rightCol {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* ── section ── */
+.section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+}
+
+/* ── skills list ── */
+.skillsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.skillRow {
+  display: grid;
+  grid-template-columns: 2rem 7rem 1fr 2.5rem;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.skillRank {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.skillName {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  text-transform: lowercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.skillCount {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* ── bar ── */
+.barWrap {
+  height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.6s ease;
+}
+
+.barAlt {
+  background: #5b9dff;
+}
+
+/* ── roles list ── */
+.rolesList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.roleRow {
+  display: grid;
+  grid-template-columns: 1fr auto 2.5rem;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.roleName {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.roleCount {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* ── companies ── */
+.companyGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.companyChip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.78rem;
+}
+
+.companyName {
+  color: var(--text-secondary);
+}
+
+.companyCount {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--accent);
+}
