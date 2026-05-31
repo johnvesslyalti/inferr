@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useAuth, API_BASE } from '@/src/lib/auth-context';
 import { apiFetch } from '@/src/lib/server-status';
 import { getSessionHint, readFeedCache, writeFeedCache } from '@/src/lib/local-store';
+import { ProfileMenu } from '@/src/components/ProfileMenu';
 import styles from './feed.module.css';
 
 interface Article {
@@ -29,7 +30,7 @@ function sameFeed(a: Article[], b: Article[]): boolean {
 
 export default function FeedPage() {
   const router = useRouter();
-  const { token, ready, signOut: authSignOut } = useAuth();
+  const { token, ready } = useAuth();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -87,11 +88,6 @@ export default function FeedPage() {
     return () => { cancelled = true; };
   }, [router, token, ready]);
 
-  const signOut = async () => {
-    await authSignOut();
-    router.push('/');
-  };
-
   return (
     <div className={styles.page}>
       <nav className={styles.nav}>
@@ -100,12 +96,7 @@ export default function FeedPage() {
           <span className={styles.logoText}>inferr</span>
         </div>
         <div className={styles.navRight}>
-          <a href="/chat" className={styles.navLink}>chat</a>
-          <a href="/market" className={`${styles.navLink} ${styles.navLinkNew}`}>
-              tech market <span className={styles.newBadge}>new</span>
-            </a>
-          <a href="/onboarding" className={styles.navLink}>edit interests</a>
-          <button onClick={signOut} className={styles.signOut}>sign out</button>
+          <ProfileMenu />
         </div>
       </nav>
 
