@@ -674,8 +674,8 @@
 
 .stepsRow {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1rem;
 }
 
 .stepCard {
@@ -828,7 +828,7 @@
   }
 
   .stepsRow {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .stepCard:not(:last-child)::after {
