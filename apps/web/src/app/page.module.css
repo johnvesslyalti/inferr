@@ -591,6 +591,67 @@
   color: var(--accent);
 }
 
+/* ── mock market visual ── */
+.mockMarket {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.mockMarketHeader {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.mockMarketRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.mockMarketRank {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  width: 1.4rem;
+  flex-shrink: 0;
+}
+
+.mockMarketSkill {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  width: 6rem;
+  flex-shrink: 0;
+}
+
+.mockMarketBar {
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.mockMarketFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #5b9dff, #8b6dff);
+}
+
+.mockMarketCount {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  width: 1.5rem;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 /* ===== HOW IT WORKS ===== */
 .howHeader {
   margin: 3rem 0 1.5rem;
