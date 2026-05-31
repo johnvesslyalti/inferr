@@ -33,7 +33,7 @@ export function ProfileMenu() {
 
   const initials = user?.name
     ? user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
-    : '?';
+    : '';
 
   const handleSignOut = async () => {
     setOpen(false);
@@ -47,8 +47,11 @@ export function ProfileMenu() {
         className={styles.trigger}
         onClick={() => setOpen((v) => !v)}
         aria-label="Open profile menu"
+        disabled={!user}
       >
-        {user?.avatar ? (
+        {!user ? (
+          <span className={styles.skeleton} />
+        ) : user.avatar ? (
           <Image
             src={user.avatar}
             alt={user.name}
