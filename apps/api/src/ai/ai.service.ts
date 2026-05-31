@@ -39,6 +39,16 @@ export class AiService {
     return response.choices[0].message.content?.trim() ?? '';
   }
 
+  async chat(prompt: string): Promise<string> {
+    const response = await this.client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 500,
+      temperature: 0.3,
+    });
+    return response.choices[0].message.content?.trim() ?? '';
+  }
+
   async embed(text: string): Promise<number[]> {
     const response = await this.client.embeddings.create({
       model: 'text-embedding-3-small',

@@ -1,8 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { desc, gte, sql } from 'drizzle-orm';
+import { desc, gte } from 'drizzle-orm';
 import { DRIZZLE } from '../db/drizzle.provider';
 import type { DrizzleDB } from '../db/drizzle.provider';
 import { jobs, NewJob } from '../db/schema';
+import { AiService } from '../ai/ai.service';
 
 interface RemotiveJob {
   id: number;
@@ -17,6 +18,17 @@ interface RemotiveJob {
   salary: string;
 }
 
+export interface TrendingRole {
+  role: string;
+  demand: number; // 1-5
+  trend: string;  // e.g. "Very High", "Growing Fast"
+}
+
+export interface MarketReport {
+  roles: TrendingRole[];
+  generatedAt: string;
+}
+
 export interface JobReport {
   totalListings: number;
   topSkills: { skill: string; count: number }[];
@@ -28,8 +40,91 @@ export interface JobReport {
 @Injectable()
 export class JobsService {
   private readonly logger = new Logger(JobsService.name);
+  private cachedMarketReport: MarketReport | null = null;
+  private cacheGeneratedAt: Date | null = null;
+  // bump this when the prompt changes to force regeneration
+  private readonly cacheVersion = 2;
 
-  constructor(@Inject(DRIZZLE) private db: DrizzleDB) {}
+  constructor(
+    @Inject(DRIZZLE) private db: DrizzleDB,
+    private readonly aiService: AiService,
+  ) {}
+
+  async getMarketReport(): Promise<MarketReport> {
+    // Cache for 24 hours — we only call OpenAI once per day
+    if (
+      this.cachedMarketReport &&
+      this.cacheGeneratedAt &&
+      Date.now() - this.cacheGeneratedAt.getTime() < 24 * 60 * 60 * 1000
+    ) {
+      return this.cachedMarketReport;
+    }
+
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+
+    const rows = await this.db
+      .select({ title: jobs.title, tags: jobs.tags })
+      .from(jobs)
+      .where(gte(jobs.createdAt, since))
+      .orderBy(desc(jobs.createdAt));
+
+    if (rows.length === 0) {
+      return { roles: [], generatedAt: new Date().toISOString() };
+    }
+
+    // Build a compact summary of the raw data to send to GPT
+    const titlesSample = rows
+      .slice(0, 50)
+      .map((r) => r.title)
+      .join('\n');
+
+    const tagFreq = new Map<string, number>();
+    for (const r of rows) {
+      for (const t of r.tags ?? []) {
+        const k = t.trim().toLowerCase();
+        if (k) tagFreq.set(k, (tagFreq.get(k) ?? 0) + 1);
+      }
+    }
+    const topTags = [...tagFreq.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([tag, count]) => `${tag} (${count})`)
+      .join(', ');
+
+    const prompt = `You are a tech job market analyst. Based on this real job posting data, identify the top 8 trending tech FIELDS/DOMAINS right now.
+
+Job titles from recent postings:
+${titlesSample}
+
+Top skills/tags appearing across all postings:
+${topTags}
+
+Return ONLY a valid JSON array — no markdown, no explanation. Format:
+[
+  { "role": "AI / ML", "demand": 5, "trend": "Explosive Growth" },
+  { "role": "DevOps", "demand": 4, "trend": "Very High" }
+]
+
+Rules:
+- "role" must be a broad tech FIELD or DOMAIN (e.g. "AI / ML", "Backend", "DevOps", "Data Engineering", "Frontend", "Security", "Mobile", "Web3", "Platform Engineering")
+- NO job levels like "Senior", "Staff", "Founding", "Junior" — only the field name
+- "demand" is 1-5 (5 = hottest)
+- "trend" is a short signal phrase (max 3 words)
+- Sort by demand descending
+- Return exactly 8 fields`;
+
+    try {
+      const response = await this.aiService.chat(prompt);
+      const parsed = JSON.parse(response) as TrendingRole[];
+      this.cachedMarketReport = { roles: parsed, generatedAt: new Date().toISOString() };
+      this.cacheGeneratedAt = new Date();
+      return this.cachedMarketReport;
+    } catch (err) {
+      this.logger.error('Failed to generate market report', err);
+      return { roles: [], generatedAt: new Date().toISOString() };
+    }
+  }
 
   async scrapeRemotive(): Promise<number> {
     this.logger.log('Scraping Remotive API...');

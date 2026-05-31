@@ -6,6 +6,11 @@ import { ScraperKeyGuard } from '../scraper/scraper-key.guard';
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
+  @Get('market')
+  async getMarketReport() {
+    return this.jobsService.getMarketReport();
+  }
+
   @Get('report')
   async getReport() {
     return this.jobsService.getReport();
