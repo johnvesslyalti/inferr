@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ScraperService } from '../scraper/scraper.service';
 import { AiService } from '../ai/ai.service';
+import { JobsService } from '../jobs/jobs.service';
 
 @Injectable()
 export class SchedulerService {
@@ -10,7 +11,22 @@ export class SchedulerService {
   constructor(
     private readonly scraperService: ScraperService,
     private readonly aiService: AiService,
+    private readonly jobsService: JobsService,
   ) {}
+
+  @Cron('0 2 * * *')
+  async runDailyJobScrape() {
+    this.logger.log('Starting daily job scrape (02:00 UTC)');
+    try {
+      const saved = await this.jobsService.scrapeRemotive();
+      this.logger.log(`Jobs scraped: ${saved} new listings`);
+    } catch (err) {
+      this.logger.error(
+        'Daily job scrape failed',
+        err instanceof Error ? err.stack : String(err),
+      );
+    }
+  }
 
   @Cron('30 1 * * *')
   async runDailyScrape() {
