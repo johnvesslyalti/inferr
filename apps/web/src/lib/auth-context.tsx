@@ -6,8 +6,16 @@ import { rememberSession, forgetSession, decodeUserId } from './local-store';
 
 export { API_BASE } from './server-status';
 
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+}
+
 interface AuthContextValue {
   token: string | null;
+  user: AuthUser | null;
   ready: boolean;
   setToken: (token: string) => void;
   signOut: () => Promise<void>;
@@ -18,6 +26,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setTokenState] = useState<string | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [ready, setReady] = useState(false);
   const refreshing = useRef(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -47,6 +56,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const data = await res.json() as { accessToken: string };
           setTokenState(data.accessToken);
           rememberSession(decodeUserId(data.accessToken));
+          // Fetch profile once per session so all navbars share user data.
+          apiFetch(`${API_BASE}/auth/me`, {
+            headers: { Authorization: `Bearer ${data.accessToken}` },
+            credentials: 'include',
+          }).then((r) => r.ok ? r.json() : null)
+            .then((u) => { if (u) setUser(u as AuthUser); })
+            .catch(() => {});
           return data.accessToken;
         }
         if (attempt === 0) await new Promise(r => setTimeout(r, 1500));
@@ -86,11 +102,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     } catch {}
     forgetSession();
+    setUser(null);
     setTokenState(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, ready, setToken, signOut, refreshToken }}>
+    <AuthContext.Provider value={{ token, user, ready, setToken, signOut, refreshToken }}>
       {children}
     </AuthContext.Provider>
   );
