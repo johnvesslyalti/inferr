@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const refreshing = useRef(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(false);
 
   const scheduleProactiveRefresh = useCallback((accessToken: string, doRefresh: () => void) => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
@@ -77,12 +78,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // On mount: restore session via silent refresh
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    mountedRef.current = true;
     refreshToken().then((t) => {
+      if (!mountedRef.current) return;
       if (t) scheduleProactiveRefresh(t, () => refreshToken());
-    }).finally(() => setReady(true));
+    }).finally(() => {
+      if (mountedRef.current) setReady(true);
+    });
 
     return () => {
+      mountedRef.current = false;
+      refreshing.current = false;
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
