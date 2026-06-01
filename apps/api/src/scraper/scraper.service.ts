@@ -29,6 +29,7 @@ interface DevToArticle {
   title: string;
   url: string;
   published_at: string;
+  tag_list: string[];
 }
 
 const CONTENT_MAX_CHARS = 8000;
@@ -89,6 +90,7 @@ export class ScraperService {
       title: article.title,
       url: article.url,
       source: 'devto',
+      tags: article.tag_list ?? [],
       publishedAt: new Date(article.published_at),
     }));
 

@@ -43,6 +43,13 @@
       "when": 1780025839236,
       "tag": "0005_third_omega_flight",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780307251649,
+      "tag": "0006_aberrant_fat_cobra",
+      "breakpoints": true
     }
   ]
 }
