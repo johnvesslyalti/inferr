@@ -42,6 +42,10 @@ export default function ChatPage() {
     const message = input.trim();
     if (!message || loading || !token) return;
 
+    // Capture history *before* appending the current user message.
+    // The backend expects prior turns; the current question is sent separately.
+    const historyForApi = messages.map((m) => ({ role: m.role, content: m.content }));
+
     setMessages((prev) => [...prev, { role: 'user', content: message }]);
     setInput('');
     setLoading(true);
@@ -57,7 +61,7 @@ export default function ChatPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, history: historyForApi }),
       });
 
       if (!res.ok) throw new Error(`Error ${res.status}`);
@@ -104,7 +108,7 @@ export default function ChatPage() {
         </div>
         <div className={styles.navRight}>
           <a href="/feed" className={styles.navLink}>feed</a>
-          <a href="/onboarding" className={styles.navLink}>interests</a>
+          {/* interests editor is available via the feed page (edit interests button opens dialog) */}
           <button onClick={signOut} className={styles.signOut}>sign out</button>
         </div>
       </nav>

@@ -29,6 +29,7 @@ interface DevToArticle {
   title: string;
   url: string;
   published_at: string;
+  tag_list: string[];
 }
 
 const CONTENT_MAX_CHARS = 8000;
@@ -69,6 +70,7 @@ export class ScraperService {
         title: hit.title,
         url: hit.url!,
         source: 'hn',
+        tags: [], // HN API does not provide tags; only Dev.to articles get tags for now (see feed tag-bonus logic)
         publishedAt: new Date(hit.created_at),
       }));
 
@@ -89,6 +91,7 @@ export class ScraperService {
       title: article.title,
       url: article.url,
       source: 'devto',
+      tags: article.tag_list ?? [],
       publishedAt: new Date(article.published_at),
     }));
 
@@ -103,6 +106,25 @@ export class ScraperService {
       .values(rows)
       .onConflictDoNothing({ target: articles.url })
       .returning({ id: articles.id, url: articles.url });
+
+    // Update tags for articles that already existed — covers pre-migration rows
+    // that defaulted to [] and Dev.to articles whose tags change between scrapes.
+    // Only newly inserted rows are returned so content scraping stays scoped to new articles.
+    const insertedUrls = new Set(inserted.map((r) => r.url));
+    const existingWithTags = rows.filter(
+      (r) => !insertedUrls.has(r.url) && (r.tags ?? []).length > 0,
+    );
+    if (existingWithTags.length > 0) {
+      await Promise.all(
+        existingWithTags.map((row) =>
+          this.db
+            .update(articles)
+            .set({ tags: row.tags ?? [] })
+            .where(eq(articles.url, row.url)),
+        ),
+      );
+      this.logger.log(`Updated tags for ${existingWithTags.length} existing articles`);
+    }
 
     this.logger.log(
       `Saved ${inserted.length} new articles (skipped ${rows.length - inserted.length} duplicates)`,
