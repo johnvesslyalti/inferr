@@ -74,6 +74,18 @@ export class AiService {
           article.content ?? undefined,
         );
 
+        // Guard against empty string (e.g. OpenAI content filter returns null content).
+        // Writing a placeholder prevents the article being re-queued on every scheduler run.
+        if (!summary) {
+          await this.db
+            .update(articles)
+            .set({ summary: `[Summary unavailable: ${article.title}]` })
+            .where(eq(articles.id, article.id));
+          failed++;
+          this.logger.warn(`Empty summary for article ${article.id} — writing placeholder to prevent re-queue`);
+          continue;
+        }
+
         // Include tags (if present) in the *embedding input* only. This gives
         // semantic retrieval (chat + feed) a soft tag signal without changing
         // the stored summary (which is shown in UI and used for context).

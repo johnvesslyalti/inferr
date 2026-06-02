@@ -325,8 +325,9 @@ Focus on technical keywords, frameworks, concepts. Do not include conversational
         relevantDocuments: [],
       };
     } catch (err) {
-      this.logger.warn(`Rewrite failed, reusing original question: ${err}`);
+      this.logger.warn(`Rewrite failed, falling back to original question: ${err}`);
       return {
+        searchQuery: state.originalQuestion,
         iterations: (state.iterations ?? 0) + 1,
         documents: [],
         relevantDocuments: [],

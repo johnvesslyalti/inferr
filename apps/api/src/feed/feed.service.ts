@@ -140,7 +140,10 @@ export class FeedService {
     return {
       hasMatches: false,
       articles: [],
-      fallback: allArticles.slice(0, 10).map(toFeedArticle),
+      fallback: allArticles
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 10)
+        .map(toFeedArticle),
     };
   }
 

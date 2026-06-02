@@ -107,6 +107,25 @@ export class ScraperService {
       .onConflictDoNothing({ target: articles.url })
       .returning({ id: articles.id, url: articles.url });
 
+    // Update tags for articles that already existed — covers pre-migration rows
+    // that defaulted to [] and Dev.to articles whose tags change between scrapes.
+    // Only newly inserted rows are returned so content scraping stays scoped to new articles.
+    const insertedUrls = new Set(inserted.map((r) => r.url));
+    const existingWithTags = rows.filter(
+      (r) => !insertedUrls.has(r.url) && (r.tags ?? []).length > 0,
+    );
+    if (existingWithTags.length > 0) {
+      await Promise.all(
+        existingWithTags.map((row) =>
+          this.db
+            .update(articles)
+            .set({ tags: row.tags ?? [] })
+            .where(eq(articles.url, row.url)),
+        ),
+      );
+      this.logger.log(`Updated tags for ${existingWithTags.length} existing articles`);
+    }
+
     this.logger.log(
       `Saved ${inserted.length} new articles (skipped ${rows.length - inserted.length} duplicates)`,
     );

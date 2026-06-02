@@ -101,29 +101,31 @@ export default function FeedPage() {
 
   const [refetchKey, setRefetchKey] = useState(0);
 
-  const revalidate = useCallback(async () => {
+  const revalidate = useCallback(async (signal: AbortSignal) => {
     if (!token) return;
-    let cancelled = false;
     try {
       const res = await apiFetch(`${API_BASE}/feed`, {
         headers: { Authorization: `Bearer ${token}` },
         credentials: 'include',
+        signal,
       });
 
+      if (signal.aborted) return;
       if (!res.ok) throw new Error('Failed to load feed');
       const raw = await res.json();
       const fresh = normalizeFeedResponse(raw);
-      if (cancelled) return;
+      if (signal.aborted) return;
 
       setFeed((prev) => (sameFeed(prev, fresh) ? prev : fresh));
       writeFeedCache(userIdRef.current, fresh);
       setError(null);
     } catch (err) {
-      if (!cancelled && !hasCacheRef.current) {
+      if (signal.aborted) return;
+      if (!hasCacheRef.current) {
         setError(err instanceof Error ? err.message : 'Something went wrong');
       }
     } finally {
-      if (!cancelled) setLoading(false);
+      if (!signal.aborted) setLoading(false);
     }
   }, [token]);
 
@@ -134,15 +136,9 @@ export default function FeedPage() {
       return;
     }
 
-    let cancelled = false;
-    const run = async () => {
-      await revalidate();
-      // the revalidate already handles sets, but we can wrap if needed
-    };
-    run();
-    return () => {
-      cancelled = true;
-    };
+    const controller = new AbortController();
+    revalidate(controller.signal);
+    return () => controller.abort();
   }, [revalidate, router, token, ready, refetchKey]);
 
   const isEmpty = !loading && !error &&
@@ -235,7 +231,11 @@ export default function FeedPage() {
                   <ArticleCard key={i} article={article} dim />
                 ))}
               </div>
-              <a href="/onboarding" className={styles.emptyLink}>Update your interests →</a>
+              <a
+                href="#"
+                onClick={(e) => { e.preventDefault(); setShowInterests(true); }}
+                className={styles.emptyLink}
+              >Update your interests →</a>
             </div>
           </>
         )}
