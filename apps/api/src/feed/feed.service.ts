@@ -92,7 +92,9 @@ export class FeedService {
       `,
     );
 
-    const recencyCutoff = new Date(Date.now() - RECENCY_DAYS * 24 * 60 * 60 * 1000);
+    const recencyCutoff = new Date(
+      Date.now() - RECENCY_DAYS * 24 * 60 * 60 * 1000,
+    );
     const userTagsLower = tags.map((t) => t.toLowerCase());
 
     // Apply tag bonus in TypeScript — avoids SQL type conflicts
@@ -121,7 +123,9 @@ export class FeedService {
     );
 
     if (matched.length > 0) {
-      this.logger.log(`${matched.length} articles matched interests within last ${RECENCY_DAYS} days`);
+      this.logger.log(
+        `${matched.length} articles matched interests within last ${RECENCY_DAYS} days`,
+      );
       return {
         hasMatches: true,
         articles: matched.slice(0, 20).map(toFeedArticle),
@@ -130,7 +134,9 @@ export class FeedService {
     }
 
     // Nothing new — return best overall matches as fallback regardless of recency
-    this.logger.log(`No recent matches — returning fallback for user ${userId}`);
+    this.logger.log(
+      `No recent matches — returning fallback for user ${userId}`,
+    );
     return {
       hasMatches: false,
       articles: [],

@@ -108,7 +108,7 @@ export default function ChatPage() {
         </div>
         <div className={styles.navRight}>
           <a href="/feed" className={styles.navLink}>feed</a>
-          <a href="/onboarding" className={styles.navLink}>interests</a>
+          {/* interests editor is available via the feed page (edit interests button opens dialog) */}
           <button onClick={signOut} className={styles.signOut}>sign out</button>
         </div>
       </nav>

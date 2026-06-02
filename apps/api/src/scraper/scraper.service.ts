@@ -70,6 +70,7 @@ export class ScraperService {
         title: hit.title,
         url: hit.url!,
         source: 'hn',
+        tags: [], // HN API does not provide tags; only Dev.to articles get tags for now (see feed tag-bonus logic)
         publishedAt: new Date(hit.created_at),
       }));
 

@@ -3,16 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, API_BASE } from '@/src/lib/auth-context';
 import { apiFetch } from '@/src/lib/server-status';
+import { INTEREST_TAGS } from '@/src/lib/interests';
 import styles from './InterestsDialog.module.css';
 
-const TAGS = [
-  'TypeScript', 'JavaScript', 'Python', 'Go', 'Rust',
-  'React', 'Next.js', 'Node.js', 'NestJS',
-  'Docker', 'Kubernetes', 'AWS',
-  'PostgreSQL', 'Redis',
-  'AI / ML', 'LLMs', 'RAG',
-  'System Design', 'DevOps', 'Security',
-];
+const TAGS = INTEREST_TAGS;
 
 interface Props {
   onClose: () => void;

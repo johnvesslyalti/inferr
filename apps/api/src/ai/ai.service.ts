@@ -56,6 +56,7 @@ export class AiService {
         id: articles.id,
         title: articles.title,
         content: articles.content,
+        tags: articles.tags,
       })
       .from(articles)
       .where(isNull(articles.summary))
@@ -72,7 +73,19 @@ export class AiService {
           article.title,
           article.content ?? undefined,
         );
-        const embedding = await this.embed(summary);
+
+        // Include tags (if present) in the *embedding input* only. This gives
+        // semantic retrieval (chat + feed) a soft tag signal without changing
+        // the stored summary (which is shown in UI and used for context).
+        // Tags are populated for (some) Dev.to articles; HN and pre-0006 articles have [].
+        const articleTags: string[] = Array.isArray(article.tags)
+          ? article.tags
+          : [];
+        const embedInput =
+          articleTags.length > 0
+            ? `${summary}\n\nTags: ${articleTags.join(', ')}`
+            : summary;
+        const embedding = await this.embed(embedInput);
 
         await this.db
           .update(articles)

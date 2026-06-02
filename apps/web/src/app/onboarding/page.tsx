@@ -4,16 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, API_BASE } from '@/src/lib/auth-context';
 import { apiFetch } from '@/src/lib/server-status';
+import { INTEREST_TAGS } from '@/src/lib/interests';
 import styles from './onboarding.module.css';
 
-const TAGS = [
-  'TypeScript', 'JavaScript', 'Python', 'Go', 'Rust',
-  'React', 'Next.js', 'Node.js', 'NestJS',
-  'Docker', 'Kubernetes', 'AWS',
-  'PostgreSQL', 'Redis',
-  'AI / ML', 'LLMs', 'RAG',
-  'System Design', 'DevOps', 'Security',
-];
+const TAGS = INTEREST_TAGS;
 
 export default function OnboardingPage() {
   const router = useRouter();

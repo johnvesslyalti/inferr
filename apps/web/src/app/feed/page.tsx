@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth, API_BASE } from '@/src/lib/auth-context';
@@ -99,38 +99,51 @@ export default function FeedPage() {
     }
   }, []);
 
+  const [refetchKey, setRefetchKey] = useState(0);
+
+  const revalidate = useCallback(async () => {
+    if (!token) return;
+    let cancelled = false;
+    try {
+      const res = await apiFetch(`${API_BASE}/feed`, {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+      });
+
+      if (!res.ok) throw new Error('Failed to load feed');
+      const raw = await res.json();
+      const fresh = normalizeFeedResponse(raw);
+      if (cancelled) return;
+
+      setFeed((prev) => (sameFeed(prev, fresh) ? prev : fresh));
+      writeFeedCache(userIdRef.current, fresh);
+      setError(null);
+    } catch (err) {
+      if (!cancelled && !hasCacheRef.current) {
+        setError(err instanceof Error ? err.message : 'Something went wrong');
+      }
+    } finally {
+      if (!cancelled) setLoading(false);
+    }
+  }, [token]);
+
   useEffect(() => {
     if (!ready) return;
-    if (!token) { router.push('/'); return; }
+    if (!token) {
+      router.push('/');
+      return;
+    }
 
     let cancelled = false;
-    const revalidate = async () => {
-      try {
-        const res = await apiFetch(`${API_BASE}/feed`, {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: 'include',
-        });
-
-        if (!res.ok) throw new Error('Failed to load feed');
-        const raw = await res.json();
-        const fresh = normalizeFeedResponse(raw);
-        if (cancelled) return;
-
-        setFeed((prev) => (sameFeed(prev, fresh) ? prev : fresh));
-        writeFeedCache(userIdRef.current, fresh);
-        setError(null);
-      } catch (err) {
-        if (!cancelled && !hasCacheRef.current) {
-          setError(err instanceof Error ? err.message : 'Something went wrong');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    const run = async () => {
+      await revalidate();
+      // the revalidate already handles sets, but we can wrap if needed
     };
-
-    revalidate();
-    return () => { cancelled = true; };
-  }, [router, token, ready]);
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [revalidate, router, token, ready, refetchKey]);
 
   const isEmpty = !loading && !error &&
     (feed?.articles?.length ?? 0) === 0 &&
@@ -142,9 +155,11 @@ export default function FeedPage() {
         <InterestsDialog
           onClose={() => setShowInterests(false)}
           onSaved={() => {
-            // Re-fetch the feed after interests are saved
+            // Re-fetch the feed after interests are saved.
+            // Incrementing refetchKey causes the useEffect to re-run revalidate.
             setLoading(true);
             setFeed(EMPTY_FEED);
+            setRefetchKey((k) => k + 1);
           }}
         />
       )}
@@ -183,7 +198,16 @@ export default function FeedPage() {
         {isEmpty && (
           <div className={styles.empty}>
             <p className={styles.emptyText}>No articles yet — run the scraper first.</p>
-            <a href="/onboarding" className={styles.emptyLink}>Update your interests →</a>
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowInterests(true);
+              }}
+              className={styles.emptyLink}
+            >
+              Update your interests →
+            </a>
           </div>
         )}
 
