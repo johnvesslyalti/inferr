@@ -30,8 +30,11 @@ const SOURCE_LABEL: Record<string, string> = {
 const EMPTY_FEED: FeedResponse = { hasMatches: false, articles: [], fallback: [] };
 
 function normalizeFeedResponse(input: unknown): FeedResponse {
-  if (!input || typeof input !== 'object') {
-    return EMPTY_FEED;
+  if (!input || typeof input !== 'object') return EMPTY_FEED;
+  // Migrate old Article[] cache written before the FeedResponse shape was introduced
+  if (Array.isArray(input)) {
+    const articles = input as Article[];
+    return { hasMatches: articles.length > 0, articles, fallback: [] };
   }
   const d = input as Record<string, unknown>;
   return {

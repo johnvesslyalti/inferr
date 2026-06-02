@@ -36,7 +36,7 @@ export class AiService {
       temperature: 0.3,
     });
 
-    return response.choices[0].message.content?.trim() ?? '';
+    return response.choices[0]?.message.content?.trim() ?? '';
   }
 
   async embed(text: string): Promise<number[]> {
@@ -45,7 +45,9 @@ export class AiService {
       input: text,
     });
 
-    return response.data[0].embedding;
+    const embedding = response.data[0]?.embedding;
+    if (!embedding) throw new Error('OpenAI embeddings returned no data');
+    return embedding;
   }
 
   async processUnsummarized(

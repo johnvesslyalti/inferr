@@ -103,16 +103,17 @@ export class FeedService {
       const hasTagMatch =
         userTagsLower.length > 0 &&
         articleTags.some((t) => userTagsLower.includes(t.toLowerCase()));
+      const raw = Number(r.cosine_distance);
       const distance = Math.max(
         0,
-        Number(r.cosine_distance) - (hasTagMatch ? TAG_BONUS : 0),
+        (isNaN(raw) ? 1 : raw) - (hasTagMatch ? TAG_BONUS : 0),
       );
       return {
         title: r.title,
         summary: r.summary,
         url: r.url,
         source: r.source,
-        createdAt: new Date(r.created_at),
+        createdAt: r.created_at ? new Date(r.created_at) : new Date(0),
         distance,
       };
     });
