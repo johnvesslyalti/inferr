@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { ChatOpenAI } from '@langchain/openai';
@@ -7,7 +7,11 @@ import { StateGraph, START, END, Annotation } from '@langchain/langgraph';
 import { DRIZZLE } from '../db/drizzle.provider';
 import type { DrizzleDB } from '../db/drizzle.provider';
 import { AiService } from '../ai/ai.service';
-import type { ChatSource, ChatResult, GraphHistoryMessage } from './dto/chat.dto';
+import type {
+  ChatSource,
+  ChatResult,
+  GraphHistoryMessage,
+} from './dto/chat.dto';
 
 interface RetrievedDoc {
   id: string;
@@ -17,8 +21,15 @@ interface RetrievedDoc {
   summary: string | null;
 }
 
+/**
+ * State for the agentic RAG graph.
+ * - originalQuestion: the user's raw conversational question (for final answer generation and UX)
+ * - searchQuery: the (possibly LLM-rewritten) focused query used for embedding/retrieval/grading
+ * This separation prevents search-oriented rewrites from polluting the final "Question:" presented to the LLM in generate.
+ */
 interface RagState {
-  question: string;
+  originalQuestion: string;
+  searchQuery: string;
   history: GraphHistoryMessage[];
   documents: RetrievedDoc[];
   relevantDocuments: RetrievedDoc[];
@@ -33,31 +44,58 @@ const RETRIEVAL_K = 6;
 const RelevanceSchema = z.object({
   relevant_doc_indices: z
     .array(z.number())
-    .describe('Zero-based indices of the documents from the provided list that are relevant to answering the question. Return an empty array if none are relevant.'),
+    .describe(
+      'Zero-based indices of the documents from the provided list that are relevant to answering the question. Return an empty array if none are relevant.',
+    ),
 });
 
 @Injectable()
 export class AgenticRagService {
   private readonly logger = new Logger(AgenticRagService.name);
-  private readonly llm: ChatOpenAI;
-  private readonly graph: any;
+  private _llm?: ChatOpenAI;
+  // Use any for the compiled graph because the concrete generics produced by
+  // Annotation.Root + our node functions are extremely complex and don't easily
+  // assign to a simple CompiledStateGraph<TState, TUpdate> without deep type
+  // gymnastics (which would hurt readability more than help). We still get
+  // runtime safety from LangGraph and have targeted eslint disables.
+  private _graph?: any;
 
   constructor(
     @Inject(DRIZZLE) private db: DrizzleDB,
     private readonly aiService: AiService,
-  ) {
-    this.llm = new ChatOpenAI({
-      model: 'gpt-4o-mini',
-      temperature: 0.2,
-      maxTokens: 500,
-    });
+  ) {}
 
-    this.graph = this.buildGraph();
+  /**
+   * Lazy getter for the OpenAI chat model (used by LangGraph nodes and structured output).
+   * Avoids eager construction so missing OPENAI_API_KEY fails only on first /chat use (same as before),
+   * but now explicit for the multiple LLM calls in the agentic flow (embed + graph nodes).
+   */
+  private get llm(): ChatOpenAI {
+    if (!this._llm) {
+      this._llm = new ChatOpenAI({
+        model: 'gpt-4o-mini',
+        temperature: 0.2,
+        maxTokens: 500,
+      });
+    }
+    return this._llm;
+  }
+
+  /**
+   * Lazy getter for the compiled LangGraph. Built on first access using the (also lazy) llm.
+   */
+  private get graph(): any {
+    if (!this._graph) {
+      this._graph = this.buildGraph();
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return this._graph;
   }
 
   private buildGraph() {
     const State = Annotation.Root({
-      question: Annotation<string>(),
+      originalQuestion: Annotation<string>(),
+      searchQuery: Annotation<string>(),
       history: Annotation<GraphHistoryMessage[]>({
         reducer: (curr, update) => update ?? curr ?? [],
         default: () => [],
@@ -82,16 +120,25 @@ export class AgenticRagService {
     });
 
     const workflow = new StateGraph(State)
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       .addNode('retrieve', this.retrieveNode.bind(this))
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       .addNode('gradeDocuments', this.gradeDocumentsNode.bind(this))
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       .addNode('rewriteQuery', this.rewriteQueryNode.bind(this))
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       .addNode('generate', this.generateNode.bind(this))
       .addEdge(START, 'retrieve')
       .addEdge('retrieve', 'gradeDocuments')
-      .addConditionalEdges('gradeDocuments', this.routeAfterGrading.bind(this), {
-        generate: 'generate',
-        rewrite: 'rewriteQuery',
-      })
+      .addConditionalEdges(
+        'gradeDocuments',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        this.routeAfterGrading.bind(this),
+        {
+          generate: 'generate',
+          rewrite: 'rewriteQuery',
+        },
+      )
       .addEdge('rewriteQuery', 'retrieve')
       .addEdge('generate', END);
 
@@ -100,21 +147,32 @@ export class AgenticRagService {
 
   /**
    * Public entry point. Accepts optional conversation history for better multi-turn RAG.
+   *
+   * Note: userId is accepted (from auth) and logged for traceability, but chat retrieval
+   * is intentionally pure question-driven semantic search over the global article corpus.
+   * User interests/tags personalization (including tag-bonus and interest-based queryText)
+   * is handled only in FeedService. This keeps chat answers faithful to the explicit question
+   * rather than the user's profile (design choice confirmed per review).
    */
   async query(
     userId: string,
     question: string,
     history: GraphHistoryMessage[] = [],
   ): Promise<ChatResult> {
-    this.logger.log(`Agentic RAG query from user ${userId}: "${question}" (history: ${history.length} turns)`);
+    this.logger.log(
+      `Agentic RAG query from user ${userId}: "${question}" (history: ${history.length} turns)`,
+    );
 
+    const q = question.trim();
     const initialState: Partial<RagState> = {
-      question: question.trim(),
+      originalQuestion: q,
+      searchQuery: q,
       history,
       iterations: 0,
     };
 
-    const finalState = await this.graph.invoke(initialState as any);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    const finalState = (await this.graph.invoke(initialState)) as RagState;
 
     return {
       answer: finalState.answer?.trim() ?? '',
@@ -125,7 +183,7 @@ export class AgenticRagService {
   // --- Nodes ---
 
   private async retrieveNode(state: RagState): Promise<Partial<RagState>> {
-    const embedding = await this.aiService.embed(state.question);
+    const embedding = await this.aiService.embed(state.searchQuery);
     const embeddingStr = `[${embedding.join(',')}]`;
 
     const rows = await this.db.execute<{
@@ -152,12 +210,16 @@ export class AgenticRagService {
       summary: r.summary,
     }));
 
-    this.logger.log(`Retrieved ${documents.length} candidate documents for question (iter ${state.iterations})`);
+    this.logger.log(
+      `Retrieved ${documents.length} candidate documents for "${state.originalQuestion}" (iter ${state.iterations})`,
+    );
 
     return { documents };
   }
 
-  private async gradeDocumentsNode(state: RagState): Promise<Partial<RagState>> {
+  private async gradeDocumentsNode(
+    state: RagState,
+  ): Promise<Partial<RagState>> {
     if (state.documents.length === 0) {
       return { relevantDocuments: [] };
     }
@@ -174,7 +236,7 @@ Given a user question and a list of article summaries, return the 0-based indice
 Be strict: if a document is only tangentially related or lacks concrete details, do not include it.
 Return an empty array if none of the documents are relevant enough.`;
 
-    const user = `Question: ${state.question}\n\nDocuments:\n${docsForPrompt}\n\nReturn JSON only.`;
+    const user = `Question: ${state.searchQuery}\n\nDocuments:\n${docsForPrompt}\n\nReturn JSON only.`;
 
     const structuredLlm = this.llm.withStructuredOutput(RelevanceSchema);
 
@@ -184,14 +246,24 @@ Return an empty array if none of the documents are relevant enough.`;
         { role: 'user', content: user },
       ]);
 
-      const indices = new Set(result.relevant_doc_indices.filter((i) => i >= 0 && i < state.documents.length));
-      const relevantDocuments = state.documents.filter((_, idx) => indices.has(idx));
+      const indices = new Set(
+        result.relevant_doc_indices.filter(
+          (i) => i >= 0 && i < state.documents.length,
+        ),
+      );
+      const relevantDocuments = state.documents.filter((_, idx) =>
+        indices.has(idx),
+      );
 
-      this.logger.log(`Graded: ${relevantDocuments.length}/${state.documents.length} docs marked relevant`);
+      this.logger.log(
+        `Graded: ${relevantDocuments.length}/${state.documents.length} docs marked relevant`,
+      );
 
       return { relevantDocuments };
     } catch (err) {
-      this.logger.warn(`Grading failed, falling back to using all retrieved docs: ${err}`);
+      this.logger.warn(
+        `Grading failed, falling back to using all retrieved docs: ${err}`,
+      );
       return { relevantDocuments: state.documents };
     }
   }
@@ -204,7 +276,9 @@ Return an empty array if none of the documents are relevant enough.`;
       return 'generate';
     }
     if (canRetry) {
-      this.logger.log(`No relevant docs — will rewrite query (iter ${state.iterations})`);
+      this.logger.log(
+        `No relevant docs — will rewrite query (iter ${state.iterations})`,
+      );
       return 'rewrite';
     }
     // Give up and generate with whatever we have (even if empty)
@@ -221,7 +295,7 @@ Return an empty array if none of the documents are relevant enough.`;
 Given the conversation history and the latest user question, produce a single, precise, standalone search query (max 25 words) that will surface the most relevant articles.
 Focus on technical keywords, frameworks, concepts. Do not include conversational filler. Output ONLY the rewritten query.`;
 
-    const user = `Conversation so far:\n${historyText || '(no prior turns)'}\n\nLatest question: ${state.question}\n\nRewritten search query:`;
+    const user = `Conversation so far:\n${historyText || '(no prior turns)'}\n\nLatest question: ${state.originalQuestion}\n\nRewritten search query:`;
 
     try {
       const response = await this.llm.invoke([
@@ -229,12 +303,16 @@ Focus on technical keywords, frameworks, concepts. Do not include conversational
         { role: 'user', content: user },
       ]);
 
-      const newQuestion = (response.content as string)?.trim().replace(/^["']|["']$/g, '') || state.question;
+      const newSearchQuery =
+        (response.content as string)?.trim().replace(/^["']|["']$/g, '') ||
+        state.searchQuery;
 
-      this.logger.log(`Rewrote query: "${state.question}" -> "${newQuestion}"`);
+      this.logger.log(
+        `Rewrote query: "${state.originalQuestion}" -> "${newSearchQuery}"`,
+      );
 
       return {
-        question: newQuestion,
+        searchQuery: newSearchQuery,
         iterations: (state.iterations ?? 0) + 1,
         // Clear previous retrievals so next retrieve populates fresh
         documents: [],
@@ -251,7 +329,10 @@ Focus on technical keywords, frameworks, concepts. Do not include conversational
   }
 
   private async generateNode(state: RagState): Promise<Partial<RagState>> {
-    const contextArticles = state.relevantDocuments.length > 0 ? state.relevantDocuments : state.documents;
+    const contextArticles =
+      state.relevantDocuments.length > 0
+        ? state.relevantDocuments
+        : state.documents;
 
     const context = contextArticles
       .map(
@@ -271,10 +352,10 @@ Focus on technical keywords, frameworks, concepts. Do not include conversational
       'If the context does not contain enough information, say so clearly. Do not make up facts.';
 
     const userContent = context
-      ? `Context articles:\n\n${context}\n\nQuestion: ${state.question}`
-      : `No relevant articles were found in the knowledge base.\n\nQuestion: ${state.question}`;
+      ? `Context articles:\n\n${context}\n\nQuestion: ${state.originalQuestion}`
+      : `No relevant articles were found in the knowledge base.\n\nQuestion: ${state.originalQuestion}`;
 
-    const messages: any[] = [
+    const messages: Array<{ role: string; content: string }> = [
       { role: 'system', content: systemContent },
       ...historyMessages,
       { role: 'user', content: userContent },
@@ -290,19 +371,14 @@ Focus on technical keywords, frameworks, concepts. Do not include conversational
         source: a.source,
       }));
 
-      this.logger.log(`Generated answer using ${sources.length} sources`);
+      this.logger.log(
+        `Generated answer using ${sources.length} sources (for original question)`,
+      );
 
       return { answer, sources };
     } catch (err) {
       this.logger.error(`Generation failed: ${err}`);
-      return {
-        answer: 'Sorry, I ran into an error while generating the response.',
-        sources: contextArticles.map((a) => ({
-          title: a.title,
-          url: a.url,
-          source: a.source,
-        })),
-      };
+      throw new InternalServerErrorException('Failed to generate a response');
     }
   }
 }
