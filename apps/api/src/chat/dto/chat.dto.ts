@@ -1,8 +1,18 @@
-import { IsArray, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ChatHistoryMessageDto {
   @IsString()
+  @IsIn(['user', 'assistant'])
   role: 'user' | 'assistant';
 
   @IsString()
@@ -18,6 +28,7 @@ export class ChatDto {
 
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(20)
   @ValidateNested({ each: true })
   @Type(() => ChatHistoryMessageDto)
   history?: ChatHistoryMessageDto[];
