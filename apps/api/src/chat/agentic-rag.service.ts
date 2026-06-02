@@ -53,6 +53,7 @@ const RelevanceSchema = z.object({
 export class AgenticRagService {
   private readonly logger = new Logger(AgenticRagService.name);
   private _llm?: ChatOpenAI;
+  private _gradingLlm?: ReturnType<ChatOpenAI['withStructuredOutput']>;
   // Use any for the compiled graph because the concrete generics produced by
   // Annotation.Root + our node functions are extremely complex and don't easily
   // assign to a simple CompiledStateGraph<TState, TUpdate> without deep type
@@ -79,6 +80,13 @@ export class AgenticRagService {
       });
     }
     return this._llm;
+  }
+
+  private get gradingLlm(): ReturnType<ChatOpenAI['withStructuredOutput']> {
+    if (!this._gradingLlm) {
+      this._gradingLlm = this.llm.withStructuredOutput(RelevanceSchema);
+    }
+    return this._gradingLlm;
   }
 
   /**
@@ -238,13 +246,11 @@ Return an empty array if none of the documents are relevant enough.`;
 
     const user = `Question: ${state.searchQuery}\n\nDocuments:\n${docsForPrompt}\n\nReturn JSON only.`;
 
-    const structuredLlm = this.llm.withStructuredOutput(RelevanceSchema);
-
     try {
-      const result = await structuredLlm.invoke([
+      const result = (await this.gradingLlm.invoke([
         { role: 'system', content: system },
         { role: 'user', content: user },
-      ]);
+      ])) as z.infer<typeof RelevanceSchema>;
 
       const indices = new Set(
         result.relevant_doc_indices.filter(
