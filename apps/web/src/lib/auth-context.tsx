@@ -4,6 +4,11 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import { API_BASE, apiFetch } from './server-status';
 import { rememberSession, forgetSession, decodeUserId } from './local-store';
 
+// Shared across all useAuthFetch instances: if multiple requests 401 at the
+// same time, they all await the same promise instead of each rotating the
+// refresh token independently (which would invalidate each other).
+let inflightRefresh: Promise<string | null> | null = null;
+
 export { API_BASE } from './server-status';
 
 interface AuthContextValue {
@@ -100,4 +105,35 @@ export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
   return ctx;
+}
+
+export function useAuthFetch() {
+  const { token, refreshToken, signOut } = useAuth();
+  const tokenRef = useRef(token);
+  useEffect(() => { tokenRef.current = token; }, [token]);
+
+  return useCallback(async (url: string, options: RequestInit = {}): Promise<Response> => {
+    const withBearer = (t: string | null): RequestInit => ({
+      ...options,
+      credentials: 'include' as const,
+      headers: {
+        ...(options.headers as Record<string, string> | undefined),
+        ...(t ? { Authorization: `Bearer ${t}` } : {}),
+      },
+    });
+
+    const res = await apiFetch(url, withBearer(tokenRef.current));
+    if (res.status !== 401) return res;
+
+    if (!inflightRefresh) {
+      inflightRefresh = refreshToken().finally(() => { inflightRefresh = null; });
+    }
+    const newToken = await inflightRefresh;
+    if (!newToken) { await signOut(); throw new Error('Session expired'); }
+
+    const retry = await apiFetch(url, withBearer(newToken));
+    if (retry.status === 401) { await signOut(); throw new Error('Session expired'); }
+
+    return retry;
+  }, [refreshToken, signOut]);
 }

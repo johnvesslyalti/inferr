@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useAuth, API_BASE } from '@/src/lib/auth-context';
-import { apiFetch } from '@/src/lib/server-status';
+import { useAuth, useAuthFetch, API_BASE } from '@/src/lib/auth-context';
 import { INTEREST_TAGS } from '@/src/lib/interests';
 import styles from './InterestsDialog.module.css';
 
@@ -15,6 +14,7 @@ interface Props {
 
 export function InterestsDialog({ onClose, onSaved }: Props) {
   const { token } = useAuth();
+  const authFetch = useAuthFetch();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,10 +23,7 @@ export function InterestsDialog({ onClose, onSaved }: Props) {
   // Load existing interests
   useEffect(() => {
     if (!token) return;
-    apiFetch(`${API_BASE}/users/interests`, {
-      headers: { Authorization: `Bearer ${token}` },
-      credentials: 'include',
-    })
+    authFetch(`${API_BASE}/users/interests`)
       .then((r) => r.json())
       .then((data) => { if (data.tags?.length) setSelected(new Set(data.tags)); })
       .catch(() => {});
@@ -55,13 +52,9 @@ export function InterestsDialog({ onClose, onSaved }: Props) {
     setSaving(true);
     setError(null);
     try {
-      const res = await apiFetch(`${API_BASE}/users/interests`, {
+      const res = await authFetch(`${API_BASE}/users/interests`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tags: Array.from(selected) }),
       });
       if (!res.ok) throw new Error('Failed to save interests');
