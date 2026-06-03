@@ -140,6 +140,7 @@ export default function FeedPage() {
     }
 
     const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     revalidate(controller.signal);
     return () => controller.abort();
   }, [revalidate, router, token, ready, refetchKey]);
