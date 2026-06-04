@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useAuth, API_BASE } from '@/src/lib/auth-context';
-import { apiFetch } from '@/src/lib/server-status';
+import { useAuth, useAuthFetch, API_BASE, SessionExpiredError } from '@/src/lib/auth-context';
 import { ProfileMenu } from '@/src/components/ProfileMenu';
+import { InterestsDialog } from '@/src/components/InterestsDialog';
 import styles from './chat.module.css';
 
 interface Source {
@@ -25,9 +25,11 @@ const SOURCE_LABEL: Record<string, string> = { hn: 'HN', devto: 'Dev.to' };
 export default function ChatPage() {
   const router = useRouter();
   const { token, ready } = useAuth();
+  const authFetch = useAuthFetch();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showInterests, setShowInterests] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -43,6 +45,10 @@ export default function ChatPage() {
     const message = input.trim();
     if (!message || loading || !token) return;
 
+    // Capture history *before* appending the current user message.
+    // The backend expects prior turns; the current question is sent separately.
+    const historyForApi = messages.map((m) => ({ role: m.role, content: m.content }));
+
     setMessages((prev) => [...prev, { role: 'user', content: message }]);
     setInput('');
     setLoading(true);
@@ -52,13 +58,10 @@ export default function ChatPage() {
     }
 
     try {
-      const res = await apiFetch(`${API_BASE}/chat`, {
+      const res = await authFetch(`${API_BASE}/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ message }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, history: historyForApi }),
       });
 
       if (!res.ok) throw new Error(`Error ${res.status}`);
@@ -69,6 +72,7 @@ export default function ChatPage() {
         { role: 'assistant', content: data.answer, sources: data.sources },
       ]);
     } catch (err) {
+      if (err instanceof SessionExpiredError) { router.push('/'); return; }
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: err instanceof Error ? err.message : 'Something went wrong.' },
@@ -93,13 +97,16 @@ export default function ChatPage() {
 
   return (
     <div className={styles.page}>
+      {showInterests && (
+        <InterestsDialog onClose={() => setShowInterests(false)} />
+      )}
       <nav className={styles.nav}>
         <div className={styles.logo}>
           <Image src="/logo.png" alt="Logo" width={22} height={22} style={{ borderRadius: '4px' }} />
           <span className={styles.logoText}>inferr</span>
         </div>
         <div className={styles.navRight}>
-          <ProfileMenu />
+          <ProfileMenu onEditInterests={() => setShowInterests(true)} />
         </div>
       </nav>
 

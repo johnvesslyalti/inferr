@@ -49,6 +49,7 @@ export const articles = pgTable(
     contentScrapedAt: timestamp('content_scraped_at'),
     summary: text('summary'),
     embedding: vector('embedding', 1536),
+    tags: text('tags').array().notNull().default([]),
     publishedAt: timestamp('published_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },

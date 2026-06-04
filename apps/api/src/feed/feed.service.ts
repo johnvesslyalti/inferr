@@ -13,6 +13,12 @@ export interface FeedArticle {
   source: string;
 }
 
+export interface FeedResponse {
+  hasMatches: boolean;
+  articles: FeedArticle[];
+  fallback: FeedArticle[];
+}
+
 export interface DebugFeedArticle {
   id: string;
   title: string;
@@ -28,6 +34,18 @@ export interface DebugFeedResponse {
   articles: DebugFeedArticle[];
 }
 
+// Cosine distance below this = article is relevant to user interests
+const RELEVANCE_THRESHOLD = 0.5;
+
+// Articles newer than this are considered "today's feed"
+const RECENCY_DAYS = 2;
+
+// How much to reduce distance for articles whose tags overlap user interests
+const TAG_BONUS = 0.12;
+
+// Max number of articles to return in the personalized feed (top N after ranking + filters)
+const FEED_LIMIT = 5;
+
 @Injectable()
 export class FeedService {
   private readonly logger = new Logger(FeedService.name);
@@ -37,7 +55,7 @@ export class FeedService {
     private readonly aiService: AiService,
   ) {}
 
-  async getPersonalizedFeed(userId: string): Promise<FeedArticle[]> {
+  async getPersonalizedFeed(userId: string): Promise<FeedResponse> {
     const interestRow = await this.db
       .select({ tags: userInterests.tags })
       .from(userInterests)
@@ -45,10 +63,14 @@ export class FeedService {
       .limit(1);
 
     const tags = interestRow[0]?.tags ?? [];
-    const queryText =
-      tags.length > 0 ? tags.join(' ') : 'software development programming';
 
-    this.logger.log(`Building feed for user ${userId} with tags: ${queryText}`);
+    // Richer query text gives the embedding model more context than bare keywords
+    const queryText =
+      tags.length > 0
+        ? `software engineering articles about ${tags.join(', ')} for developers`
+        : 'software development programming tutorials';
+
+    this.logger.log(`Building feed for user ${userId} | query: "${queryText}"`);
 
     const embedding = await this.aiService.embed(queryText);
     const embeddingStr = `[${embedding.join(',')}]`;
@@ -59,28 +81,74 @@ export class FeedService {
       url: string;
       source: string;
       summary: string | null;
+      created_at: string;
+      tags: string[];
+      cosine_distance: string;
     }>(
       sql`
-        SELECT id, title, url, source, summary
+        SELECT id, title, url, source, summary, created_at, tags,
+          (embedding <=> ${embeddingStr}::vector) AS cosine_distance
         FROM articles
         WHERE embedding IS NOT NULL
-        ORDER BY embedding <=> ${embeddingStr}::vector
-        LIMIT 5
+        ORDER BY cosine_distance
+        LIMIT 30
       `,
     );
 
-    const articles = rows.rows.map((r) => ({
-      title: r.title,
-      summary: r.summary,
-      url: r.url,
-      source: r.source,
-    }));
+    const recencyCutoff = new Date(
+      Date.now() - RECENCY_DAYS * 24 * 60 * 60 * 1000,
+    );
+    const userTagsLower = tags.map((t) => t.toLowerCase());
 
-    if (articles.length === 0) {
-      this.logger.log('No articles found — trigger POST /scraper/run manually');
+    // Apply tag bonus in TypeScript — avoids SQL type conflicts
+    const allArticles = rows.rows.map((r) => {
+      const articleTags: string[] = Array.isArray(r.tags) ? r.tags : [];
+      const hasTagMatch =
+        userTagsLower.length > 0 &&
+        articleTags.some((t) => userTagsLower.includes(t.toLowerCase()));
+      const raw = Number(r.cosine_distance);
+      const distance = Math.max(
+        0,
+        (isNaN(raw) ? 1 : raw) - (hasTagMatch ? TAG_BONUS : 0),
+      );
+      return {
+        title: r.title,
+        summary: r.summary,
+        url: r.url,
+        source: r.source,
+        createdAt: r.created_at ? new Date(r.created_at) : new Date(0),
+        distance,
+      };
+    });
+
+    // Recent articles that pass the relevance threshold
+    const matched = allArticles.filter(
+      (a) => a.createdAt >= recencyCutoff && a.distance < RELEVANCE_THRESHOLD,
+    );
+
+    if (matched.length > 0) {
+      this.logger.log(
+        `${matched.length} articles matched interests within last ${RECENCY_DAYS} days`,
+      );
+      return {
+        hasMatches: true,
+        articles: matched.slice(0, FEED_LIMIT).map(toFeedArticle),
+        fallback: [],
+      };
     }
 
-    return articles;
+    // Nothing new — return best overall matches as fallback regardless of recency
+    this.logger.log(
+      `No recent matches — returning fallback for user ${userId}`,
+    );
+    return {
+      hasMatches: false,
+      articles: [],
+      fallback: allArticles
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, FEED_LIMIT)
+        .map(toFeedArticle),
+    };
   }
 
   async getDebugFeed(userId: string): Promise<DebugFeedResponse> {
@@ -92,7 +160,9 @@ export class FeedService {
 
     const tags = interestRow[0]?.tags ?? [];
     const queryText =
-      tags.length > 0 ? tags.join(' ') : 'software development programming';
+      tags.length > 0
+        ? `software engineering articles about ${tags.join(', ')} for developers`
+        : 'software development programming tutorials';
 
     const embedding = await this.aiService.embed(queryText);
     const embeddingStr = `[${embedding.join(',')}]`;
@@ -128,4 +198,13 @@ export class FeedService {
       })),
     };
   }
+}
+
+function toFeedArticle(a: {
+  title: string;
+  summary: string | null;
+  url: string;
+  source: string;
+}): FeedArticle {
+  return { title: a.title, summary: a.summary, url: a.url, source: a.source };
 }

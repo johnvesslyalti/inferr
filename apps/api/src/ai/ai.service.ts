@@ -36,7 +36,7 @@ export class AiService {
       temperature: 0.3,
     });
 
-    return response.choices[0].message.content?.trim() ?? '';
+    return response.choices[0]?.message.content?.trim() ?? '';
   }
 
   async chat(prompt: string): Promise<string> {
@@ -55,7 +55,9 @@ export class AiService {
       input: text,
     });
 
-    return response.data[0].embedding;
+    const embedding = response.data[0]?.embedding;
+    if (!embedding) throw new Error('OpenAI embeddings returned no data');
+    return embedding;
   }
 
   async processUnsummarized(
@@ -66,6 +68,7 @@ export class AiService {
         id: articles.id,
         title: articles.title,
         content: articles.content,
+        tags: articles.tags,
       })
       .from(articles)
       .where(isNull(articles.summary))
@@ -82,7 +85,31 @@ export class AiService {
           article.title,
           article.content ?? undefined,
         );
-        const embedding = await this.embed(summary);
+
+        // Guard against empty string (e.g. OpenAI content filter returns null content).
+        // Writing a placeholder prevents the article being re-queued on every scheduler run.
+        if (!summary) {
+          await this.db
+            .update(articles)
+            .set({ summary: `[Summary unavailable: ${article.title}]` })
+            .where(eq(articles.id, article.id));
+          failed++;
+          this.logger.warn(`Empty summary for article ${article.id} — writing placeholder to prevent re-queue`);
+          continue;
+        }
+
+        // Include tags (if present) in the *embedding input* only. This gives
+        // semantic retrieval (chat + feed) a soft tag signal without changing
+        // the stored summary (which is shown in UI and used for context).
+        // Tags are populated for (some) Dev.to articles; HN and pre-0006 articles have [].
+        const articleTags: string[] = Array.isArray(article.tags)
+          ? article.tags
+          : [];
+        const embedInput =
+          articleTags.length > 0
+            ? `${summary}\n\nTags: ${articleTags.join(', ')}`
+            : summary;
+        const embedding = await this.embed(embedInput);
 
         await this.db
           .update(articles)

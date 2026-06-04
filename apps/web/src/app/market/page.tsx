@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useAuth, API_BASE } from '@/src/lib/auth-context';
 import { apiFetch } from '@/src/lib/server-status';
 import { ProfileMenu } from '@/src/components/ProfileMenu';
+import { InterestsDialog } from '@/src/components/InterestsDialog';
 import styles from './market.module.css';
 
 interface TrendingRole {
@@ -35,6 +36,7 @@ export default function TechMarketPage() {
   const [report, setReport] = useState<MarketReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showInterests, setShowInterests] = useState(false);
 
   useEffect(() => {
     if (ready && !token) { router.push('/'); return; }
@@ -78,13 +80,16 @@ export default function TechMarketPage() {
 
   return (
     <div className={styles.page}>
+      {showInterests && (
+        <InterestsDialog onClose={() => setShowInterests(false)} />
+      )}
       <nav className={styles.nav}>
         <div className={styles.logo}>
           <Image src="/logo.png" alt="Logo" width={22} height={22} style={{ borderRadius: '4px' }} />
           <span className={styles.logoText}>inferr</span>
         </div>
         <div className={styles.navRight}>
-          <ProfileMenu />
+          <ProfileMenu onEditInterests={() => setShowInterests(true)} />
         </div>
       </nav>
 

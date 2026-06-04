@@ -10,10 +10,15 @@ const NAV_ITEMS = [
   { href: '/feed',       label: 'Feed' },
   { href: '/chat',       label: 'Chat' },
   { href: '/market',     label: 'Tech Market', isNew: true },
-  { href: '/onboarding', label: 'Edit Interests' },
 ];
 
-export function ProfileMenu() {
+interface ProfileMenuProps {
+  // When provided, "Edit Interests" opens this handler (e.g. an in-place dialog)
+  // instead of navigating to the /onboarding page.
+  onEditInterests?: () => void;
+}
+
+export function ProfileMenu({ onEditInterests }: ProfileMenuProps = {}) {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -93,6 +98,25 @@ export function ProfileMenu() {
               {item.isNew && <span className={styles.newBadge}>new</span>}
             </a>
           ))}
+
+          {/* Edit Interests: open the in-place dialog when a handler is given,
+              otherwise fall back to the onboarding page. */}
+          {onEditInterests ? (
+            <button
+              className={`${styles.item} ${styles.itemButton}`}
+              onClick={() => { setOpen(false); onEditInterests(); }}
+            >
+              Edit Interests
+            </button>
+          ) : (
+            <a
+              href="/onboarding"
+              className={`${styles.item} ${pathname === '/onboarding' ? styles.itemActive : ''}`}
+              onClick={() => setOpen(false)}
+            >
+              Edit Interests
+            </a>
+          )}
 
           <div className={styles.divider} />
 

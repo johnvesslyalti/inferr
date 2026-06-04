@@ -43,6 +43,11 @@
   font-size: 0.875rem;
   color: var(--text-secondary);
   text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  padding: 0;
   transition: color 0.15s ease;
 }
 
@@ -248,6 +253,48 @@
 }
 
 .readMore:hover { color: var(--accent-light); }
+
+/* ── nothing new ── */
+.nothingNew {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  margin-bottom: 2.5rem;
+}
+
+.nothingNewIcon {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.nothingNewText {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* ── fallback section ── */
+.fallbackSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.fallbackLabel {
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
 
 /* ── responsive ── */
 @media (max-width: 600px) {

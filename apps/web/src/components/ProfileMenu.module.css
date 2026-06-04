@@ -142,6 +142,16 @@
   color: #f3f5f8;
 }
 
+/* When .item is a <button> (e.g. "Edit Interests" opening a dialog) */
+.itemButton {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
 .itemActive {
   color: #5b9dff;
 }
