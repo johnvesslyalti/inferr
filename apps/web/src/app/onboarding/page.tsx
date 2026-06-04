@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth, useAuthFetch, API_BASE } from '@/src/lib/auth-context';
+import { useAuth, useAuthFetch, API_BASE, SessionExpiredError } from '@/src/lib/auth-context';
 import { INTEREST_TAGS } from '@/src/lib/interests';
 import styles from './onboarding.module.css';
 
@@ -23,8 +23,8 @@ export default function OnboardingPage() {
       .then((data) => {
         if (data.tags?.length) setSelected(new Set(data.tags));
       })
-      .catch(() => {});
-  }, [token, ready]);
+      .catch((err) => { if (err instanceof SessionExpiredError) router.push('/'); });
+  }, [token, ready, router]);
 
   const toggle = (tag: string) =>
     setSelected((prev) => {
@@ -45,6 +45,7 @@ export default function OnboardingPage() {
       if (!res.ok) throw new Error('Failed to save interests');
       router.push('/feed');
     } catch (err) {
+      if (err instanceof SessionExpiredError) { router.push('/'); return; }
       setError(err instanceof Error ? err.message : 'Something went wrong');
       setSaving(false);
     }

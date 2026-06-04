@@ -21,6 +21,7 @@ interface AuthContextValue {
   setToken: (token: string) => void;
   signOut: () => Promise<void>;
   refreshToken: () => Promise<string | null>;
+  rescheduleProactiveRefresh: (token: string) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -30,6 +31,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const refreshing = useRef(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Stable ref so doRefresh can reference itself without a circular useCallback dep.
+  const doRefreshRef = useRef<() => void>(() => {});
 
   const scheduleProactiveRefresh = useCallback((accessToken: string, doRefresh: () => void) => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
@@ -68,6 +71,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const doRefresh = useCallback(() => {
+    if (!inflightRefresh) {
+      inflightRefresh = refreshToken().finally(() => { inflightRefresh = null; });
+      inflightRefresh.then((newT) => {
+        if (newT) scheduleProactiveRefresh(newT, doRefreshRef.current);
+      });
+    }
+  }, [refreshToken, scheduleProactiveRefresh]);
+
+  // Keep ref in sync so the .then() callback inside doRefresh always calls the
+  // latest version. doRefresh is stable (deps have empty dep arrays) so this
+  // effectively runs once, but the pattern is correct if deps ever change.
+  doRefreshRef.current = doRefresh;
+
+  const rescheduleProactiveRefresh = useCallback((t: string) => {
+    scheduleProactiveRefresh(t, doRefreshRef.current);
+  }, [scheduleProactiveRefresh]);
+
   // On mount: restore session via silent refresh
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -75,12 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       inflightRefresh = refreshToken().finally(() => { inflightRefresh = null; });
     }
     inflightRefresh.then((t) => {
-      if (t) scheduleProactiveRefresh(t, function doRefresh() {
-        if (!inflightRefresh) {
-          inflightRefresh = refreshToken().finally(() => { inflightRefresh = null; });
-          inflightRefresh.then((newT) => { if (newT) scheduleProactiveRefresh(newT, doRefresh); });
-        }
-      });
+      if (t) scheduleProactiveRefresh(t, doRefreshRef.current);
     }).finally(() => setReady(true));
 
     return () => {
@@ -91,13 +107,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setToken = useCallback((newToken: string) => {
     setTokenState(newToken);
     rememberSession(decodeUserId(newToken));
-    scheduleProactiveRefresh(newToken, function doRefresh() {
-      if (!inflightRefresh) {
-        inflightRefresh = refreshToken().finally(() => { inflightRefresh = null; });
-        inflightRefresh.then((newT) => { if (newT) scheduleProactiveRefresh(newT, doRefresh); });
-      }
-    });
-  }, [scheduleProactiveRefresh, refreshToken]);
+    rescheduleProactiveRefresh(newToken);
+  }, [rescheduleProactiveRefresh]);
 
   const signOut = useCallback(async () => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
@@ -112,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, ready, setToken, signOut, refreshToken }}>
+    <AuthContext.Provider value={{ token, ready, setToken, signOut, refreshToken, rescheduleProactiveRefresh }}>
       {children}
     </AuthContext.Provider>
   );
@@ -125,7 +136,7 @@ export function useAuth(): AuthContextValue {
 }
 
 export function useAuthFetch() {
-  const { token, refreshToken, signOut } = useAuth();
+  const { token, refreshToken, signOut, rescheduleProactiveRefresh } = useAuth();
   const tokenRef = useRef(token);
   useEffect(() => { tokenRef.current = token; }, [token]);
 
@@ -150,11 +161,15 @@ export function useAuthFetch() {
     const newToken = await inflightRefresh;
     if (!newToken) { await signOut(); throw new SessionExpiredError(); }
 
+    // Re-arm the proactive timer with the new token — reactive refreshes bypass
+    // the doRefresh chain, so without this the timer would never fire again.
+    rescheduleProactiveRefresh(newToken);
+
     // Strip signal from retry: the original signal may already be aborted while
     // the refresh was in-flight, and we still want the retry to reach the server.
     const retry = await apiFetch(url, withBearer(newToken, false));
     if (retry.status === 401) { await signOut(); throw new SessionExpiredError(); }
 
     return retry;
-  }, [refreshToken, signOut]);
+  }, [refreshToken, signOut, rescheduleProactiveRefresh]);
 }

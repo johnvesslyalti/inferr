@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useAuth, useAuthFetch, API_BASE } from '@/src/lib/auth-context';
+import { useAuth, useAuthFetch, API_BASE, SessionExpiredError } from '@/src/lib/auth-context';
 import { INTEREST_TAGS } from '@/src/lib/interests';
 import styles from './InterestsDialog.module.css';
 
@@ -26,8 +26,8 @@ export function InterestsDialog({ onClose, onSaved }: Props) {
     authFetch(`${API_BASE}/users/interests`)
       .then((r) => r.json())
       .then((data) => { if (data.tags?.length) setSelected(new Set(data.tags)); })
-      .catch(() => {});
-  }, [token]);
+      .catch((err) => { if (err instanceof SessionExpiredError) onClose(); });
+  }, [token, onClose]);
 
   // Close on ESC
   useEffect(() => {
@@ -61,6 +61,7 @@ export function InterestsDialog({ onClose, onSaved }: Props) {
       onSaved?.();
       onClose();
     } catch (err) {
+      if (err instanceof SessionExpiredError) { onClose(); return; }
       setError(err instanceof Error ? err.message : 'Something went wrong');
       setSaving(false);
     }
