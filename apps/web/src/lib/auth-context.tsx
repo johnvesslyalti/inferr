@@ -80,10 +80,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refreshToken, scheduleProactiveRefresh]);
 
-  // Keep ref in sync so the .then() callback inside doRefresh always calls the
-  // latest version. doRefresh is stable (deps have empty dep arrays) so this
-  // effectively runs once, but the pattern is correct if deps ever change.
-  doRefreshRef.current = doRefresh;
+  // Keep ref in sync so the timer callback (which reads doRefreshRef) always
+  // invokes the latest doRefresh. Runs before the mount effect below (source
+  // order), so the ref is populated before any async .then() reads it.
+  useEffect(() => { doRefreshRef.current = doRefresh; }, [doRefresh]);
 
   const rescheduleProactiveRefresh = useCallback((t: string) => {
     scheduleProactiveRefresh(t, doRefreshRef.current);
@@ -91,8 +91,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // On mount: restore session via silent refresh
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!inflightRefresh) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       inflightRefresh = refreshToken().finally(() => { inflightRefresh = null; });
     }
     inflightRefresh.then((t) => {
