@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useAuth, useAuthFetch, API_BASE } from '@/src/lib/auth-context';
+import { useAuth, useAuthFetch, API_BASE, SessionExpiredError } from '@/src/lib/auth-context';
 import { getSessionHint, readFeedCache, writeFeedCache } from '@/src/lib/local-store';
 import { InterestsDialog } from '@/src/components/InterestsDialog';
 import styles from './feed.module.css';
@@ -122,7 +122,7 @@ export default function FeedPage() {
       if (signal.aborted) return;
       // Session expired: signOut() already cleared the token; let the token→null
       // useEffect redirect to '/' instead of showing an error card.
-      if (err instanceof Error && err.message === 'Session expired') return;
+      if (err instanceof SessionExpiredError) return;
       if (!hasCacheRef.current) {
         setError(err instanceof Error ? err.message : 'Something went wrong');
       }

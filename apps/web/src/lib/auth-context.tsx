@@ -9,6 +9,10 @@ import { rememberSession, forgetSession, decodeUserId } from './local-store';
 // refresh token independently (which would invalidate each other).
 let inflightRefresh: Promise<string | null> | null = null;
 
+export class SessionExpiredError extends Error {
+  constructor() { super('Session expired'); this.name = 'SessionExpiredError'; }
+}
+
 export { API_BASE } from './server-status';
 
 interface AuthContextValue {
@@ -71,9 +75,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       inflightRefresh = refreshToken().finally(() => { inflightRefresh = null; });
     }
     inflightRefresh.then((t) => {
-      if (t) scheduleProactiveRefresh(t, () => {
+      if (t) scheduleProactiveRefresh(t, function doRefresh() {
         if (!inflightRefresh) {
           inflightRefresh = refreshToken().finally(() => { inflightRefresh = null; });
+          inflightRefresh.then((newT) => { if (newT) scheduleProactiveRefresh(newT, doRefresh); });
         }
       });
     }).finally(() => setReady(true));
@@ -86,9 +91,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setToken = useCallback((newToken: string) => {
     setTokenState(newToken);
     rememberSession(decodeUserId(newToken));
-    scheduleProactiveRefresh(newToken, () => {
+    scheduleProactiveRefresh(newToken, function doRefresh() {
       if (!inflightRefresh) {
         inflightRefresh = refreshToken().finally(() => { inflightRefresh = null; });
+        inflightRefresh.then((newT) => { if (newT) scheduleProactiveRefresh(newT, doRefresh); });
       }
     });
   }, [scheduleProactiveRefresh, refreshToken]);
@@ -142,12 +148,12 @@ export function useAuthFetch() {
       inflightRefresh = refreshToken().finally(() => { inflightRefresh = null; });
     }
     const newToken = await inflightRefresh;
-    if (!newToken) { await signOut(); throw new Error('Session expired'); }
+    if (!newToken) { await signOut(); throw new SessionExpiredError(); }
 
     // Strip signal from retry: the original signal may already be aborted while
     // the refresh was in-flight, and we still want the retry to reach the server.
     const retry = await apiFetch(url, withBearer(newToken, false));
-    if (retry.status === 401) { await signOut(); throw new Error('Session expired'); }
+    if (retry.status === 401) { await signOut(); throw new SessionExpiredError(); }
 
     return retry;
   }, [refreshToken, signOut]);
