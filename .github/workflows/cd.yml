@@ -62,35 +62,10 @@ jobs:
       - name: 'TODO: trigger API rollout'
         run: echo "Image ${{ steps.meta.outputs.tags }} pushed to GHCR. Add kubectl/fly/compose deploy step here to apply it to the running environment."
 
-  deploy-web:
-    name: Deploy web to Vercel
-    runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    needs: [deploy-api]
-    environment: production
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.15.1
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install Vercel CLI
-        run: pnpm add -g vercel@41
-
-      - name: Pull Vercel environment
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Build for Vercel
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Deploy to Vercel
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+  # NOTE: The web frontend is deployed by the Vercel GitHub integration, not
+  # this workflow. A previous `deploy-web` job ran `vercel pull/build/deploy`
+  # via the Vercel CLI, but it failed at `vercel pull` (VERCEL_TOKEN lacked
+  # access to the project) and was redundant with the integration, so it was
+  # removed. If you ever want CLI-driven prebuilt prod deploys instead of the
+  # integration, restore it and ensure VERCEL_TOKEN can access the project in
+  # .vercel/project.json.
