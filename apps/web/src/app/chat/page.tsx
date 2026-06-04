@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useAuth, useAuthFetch, API_BASE } from '@/src/lib/auth-context';
+import { useAuth, useAuthFetch, API_BASE, SessionExpiredError } from '@/src/lib/auth-context';
 import styles from './chat.module.css';
 
 interface Source {
@@ -69,6 +69,7 @@ export default function ChatPage() {
         { role: 'assistant', content: data.answer, sources: data.sources },
       ]);
     } catch (err) {
+      if (err instanceof SessionExpiredError) { router.push('/'); return; }
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: err instanceof Error ? err.message : 'Something went wrong.' },
