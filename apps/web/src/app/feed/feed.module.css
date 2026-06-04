@@ -278,15 +278,6 @@
   border-bottom: 1px solid var(--border);
 }
 
-.cardDim {
-  opacity: 0.6;
-}
-
-.cardDim:hover {
-  opacity: 1;
-  border-color: #333;
-}
-
 /* ── responsive ── */
 @media (max-width: 600px) {
   .nav { padding: 1rem; }
