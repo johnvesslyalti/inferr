@@ -43,6 +43,9 @@ const RECENCY_DAYS = 2;
 // How much to reduce distance for articles whose tags overlap user interests
 const TAG_BONUS = 0.12;
 
+// Max number of articles to return in the personalized feed (top N after ranking + filters)
+const FEED_LIMIT = 5;
+
 @Injectable()
 export class FeedService {
   private readonly logger = new Logger(FeedService.name);
@@ -129,7 +132,7 @@ export class FeedService {
       );
       return {
         hasMatches: true,
-        articles: matched.slice(0, 20).map(toFeedArticle),
+        articles: matched.slice(0, FEED_LIMIT).map(toFeedArticle),
         fallback: [],
       };
     }
@@ -143,7 +146,7 @@ export class FeedService {
       articles: [],
       fallback: allArticles
         .sort((a, b) => a.distance - b.distance)
-        .slice(0, 10)
+        .slice(0, FEED_LIMIT)
         .map(toFeedArticle),
     };
   }

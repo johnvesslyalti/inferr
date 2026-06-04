@@ -26,20 +26,24 @@ const SOURCE_LABEL: Record<string, string> = {
   devto: 'Dev.to',
 };
 
+const MAX_FEED_ARTICLES = 5;
+
 const EMPTY_FEED: FeedResponse = { hasMatches: false, articles: [], fallback: [] };
 
 function normalizeFeedResponse(input: unknown): FeedResponse {
   if (!input || typeof input !== 'object') return EMPTY_FEED;
   // Migrate old Article[] cache written before the FeedResponse shape was introduced
   if (Array.isArray(input)) {
-    const articles = input as Article[];
+    const articles = (input as Article[]).slice(0, MAX_FEED_ARTICLES);
     return { hasMatches: articles.length > 0, articles, fallback: [] };
   }
   const d = input as Record<string, unknown>;
+  const articles = Array.isArray(d.articles) ? (d.articles as Article[]).slice(0, MAX_FEED_ARTICLES) : [];
+  const fallback = Array.isArray(d.fallback) ? (d.fallback as Article[]).slice(0, MAX_FEED_ARTICLES) : [];
   return {
     hasMatches: Boolean(d.hasMatches),
-    articles: Array.isArray(d.articles) ? (d.articles as Article[]) : [],
-    fallback: Array.isArray(d.fallback) ? (d.fallback as Article[]) : [],
+    articles,
+    fallback,
   };
 }
 
@@ -57,9 +61,9 @@ function sameFeed(a: FeedResponse, b: FeedResponse): boolean {
   );
 }
 
-function ArticleCard({ article, dim = false }: { article: Article; dim?: boolean }) {
+function ArticleCard({ article }: { article: Article }) {
   return (
-    <article className={`${styles.card} ${dim ? styles.cardDim : ''}`}>
+    <article className={styles.card}>
       <div className={styles.cardTop}>
         <span className={`${styles.badge} ${styles[`badge_${article.source}`]}`}>
           {SOURCE_LABEL[article.source] ?? article.source}
@@ -93,12 +97,41 @@ export default function FeedPage() {
     const { userId } = getSessionHint();
     userIdRef.current = userId;
     const cached = readFeedCache<unknown>(userId);
-    const safe = cached ? normalizeFeedResponse(cached) : null;
+
+    // Detect pre-limit-reduction caches that contained > MAX items.
+    // If so, evict the stale cache so we don't hydrate from it, and force a fresh fetch.
+    let hadOversizedCache = false;
+    if (cached) {
+      const d = cached as Record<string, unknown>;
+      const origArtsLen = Array.isArray(d.articles) ? (d.articles as unknown[]).length : (Array.isArray(cached) ? (cached as unknown[]).length : 0);
+      const origFallLen = Array.isArray(d.fallback) ? (d.fallback as unknown[]).length : 0;
+      if (origArtsLen > MAX_FEED_ARTICLES || origFallLen > MAX_FEED_ARTICLES) {
+        hadOversizedCache = true;
+        // Evict the bloated cache entry for this user (will be repopulated from fresh API response)
+        try {
+          const key = 'inferr:feed:' + (userId ?? 'anon');
+          if (typeof window !== 'undefined') window.localStorage.removeItem(key);
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    const safe = cached && !hadOversizedCache ? normalizeFeedResponse(cached) : null;
     if (safe && (safe.articles.length > 0 || safe.fallback.length > 0)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFeed(safe);
       hasCacheRef.current = true;
       setLoading(false);
+    }
+
+    if (hadOversizedCache) {
+      // Force a re-fetch (and fresh cache write) to replace the evicted oversized data
+      // with the current top-N from the server.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRefetchKey((k) => k + 1);
+      // Keep loading true so we show the building spinner while we fetch the clean top 5
+      // (the normal revalidate useEffect will handle it; we just bumped the key to trigger)
     }
   }, []);
 
@@ -213,7 +246,7 @@ export default function FeedPage() {
         {/* Matched articles — new + relevant */}
         {!loading && !error && feed?.hasMatches && (
           <div className={styles.list}>
-            {(feed?.articles ?? []).map((article, i) => (
+            {(feed?.articles ?? []).slice(0, MAX_FEED_ARTICLES).map((article, i) => (
               <ArticleCard key={i} article={article} />
             ))}
           </div>
@@ -230,15 +263,10 @@ export default function FeedPage() {
             <div className={styles.fallbackSection}>
               <p className={styles.fallbackLabel}>Based on your interests</p>
               <div className={styles.list}>
-                {(feed?.fallback ?? []).map((article, i) => (
-                  <ArticleCard key={i} article={article} dim />
+                {(feed?.fallback ?? []).slice(0, MAX_FEED_ARTICLES).map((article, i) => (
+                  <ArticleCard key={i} article={article} />
                 ))}
               </div>
-              <a
-                href="#"
-                onClick={(e) => { e.preventDefault(); setShowInterests(true); }}
-                className={styles.emptyLink}
-              >Update your interests →</a>
             </div>
           </>
         )}
