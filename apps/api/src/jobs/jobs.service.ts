@@ -42,8 +42,6 @@ export class JobsService {
   private readonly logger = new Logger(JobsService.name);
   private cachedMarketReport: MarketReport | null = null;
   private cacheGeneratedAt: Date | null = null;
-  // bump this when the prompt changes to force regeneration
-  private readonly cacheVersion = 2;
 
   constructor(
     @Inject(DRIZZLE) private db: DrizzleDB,
@@ -116,12 +114,20 @@ Rules:
 
     try {
       const response = await this.aiService.chat(prompt);
-      const parsed = JSON.parse(response) as TrendingRole[];
+      // GPT sometimes wraps output in markdown fences despite the prompt instruction.
+      const clean = response.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      const parsed = JSON.parse(clean) as TrendingRole[];
       this.cachedMarketReport = { roles: parsed, generatedAt: new Date().toISOString() };
       this.cacheGeneratedAt = new Date();
       return this.cachedMarketReport;
     } catch (err) {
       this.logger.error('Failed to generate market report', err);
+      // Cache the failure for 1 hour to avoid hammering OpenAI on every request
+      // when GPT returns consistently malformed output.
+      if (!this.cachedMarketReport) {
+        this.cachedMarketReport = { roles: [], generatedAt: new Date().toISOString() };
+        this.cacheGeneratedAt = new Date(Date.now() - 23 * 60 * 60 * 1000); // expires in 1h
+      }
       return { roles: [], generatedAt: new Date().toISOString() };
     }
   }

@@ -19,7 +19,7 @@ interface ProfileMenuProps {
 }
 
 export function ProfileMenu({ onEditInterests }: ProfileMenuProps = {}) {
-  const { user, signOut } = useAuth();
+  const { user, token, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -52,7 +52,7 @@ export function ProfileMenu({ onEditInterests }: ProfileMenuProps = {}) {
         className={styles.trigger}
         onClick={() => setOpen((v) => !v)}
         aria-label="Open profile menu"
-        disabled={!user}
+        disabled={!token}
       >
         {!user ? (
           <span className={styles.skeleton} />

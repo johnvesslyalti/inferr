@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useAuth, API_BASE } from '@/src/lib/auth-context';
-import { apiFetch } from '@/src/lib/server-status';
+import { useAuth, useAuthFetch, API_BASE, SessionExpiredError } from '@/src/lib/auth-context';
 import { ProfileMenu } from '@/src/components/ProfileMenu';
 import { InterestsDialog } from '@/src/components/InterestsDialog';
 import styles from './market.module.css';
@@ -33,24 +32,33 @@ function DemandDots({ level }: { level: number }) {
 export default function TechMarketPage() {
   const router = useRouter();
   const { token, ready } = useAuth();
+  const authFetch = useAuthFetch();
   const [report, setReport] = useState<MarketReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInterests, setShowInterests] = useState(false);
 
   useEffect(() => {
-    if (ready && !token) { router.push('/'); return; }
     if (!ready) return;
+    if (!token) { router.push('/'); return; }
 
-    apiFetch(`${API_BASE}/jobs/market`)
+    const controller = new AbortController();
+
+    authFetch(`${API_BASE}/jobs/market`, { signal: controller.signal })
       .then((r) => {
         if (!r.ok) throw new Error('Failed to load market data');
         return r.json() as Promise<MarketReport>;
       })
       .then(setReport)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Something went wrong'))
+      .catch((err) => {
+        if (err instanceof SessionExpiredError) return;
+        if ((err as { name?: string }).name === 'AbortError') return;
+        setError(err instanceof Error ? err.message : 'Something went wrong');
+      })
       .finally(() => setLoading(false));
-  }, [ready, token, router]);
+
+    return () => controller.abort();
+  }, [ready, token, router, authFetch]);
 
   if (!ready || !token || loading) {
     return (
