@@ -90,6 +90,7 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInterests, setShowInterests] = useState(false);
+  const [refetchKey, setRefetchKey] = useState(0);
   const userIdRef = useRef<string | null>(null);
   const hasCacheRef = useRef(false);
 
@@ -128,14 +129,11 @@ export default function FeedPage() {
     if (hadOversizedCache) {
       // Force a re-fetch (and fresh cache write) to replace the evicted oversized data
       // with the current top-N from the server.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRefetchKey((k) => k + 1);
       // Keep loading true so we show the building spinner while we fetch the clean top 5
       // (the normal revalidate useEffect will handle it; we just bumped the key to trigger)
     }
   }, []);
-
-  const [refetchKey, setRefetchKey] = useState(0);
 
   const revalidate = useCallback(async (signal: AbortSignal) => {
     if (!token) return;
