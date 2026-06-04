@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useAuth, API_BASE } from '@/src/lib/auth-context';
-import { apiFetch } from '@/src/lib/server-status';
+import { useAuth, useAuthFetch, API_BASE, SessionExpiredError } from '@/src/lib/auth-context';
 import { getSessionHint, readFeedCache, writeFeedCache } from '@/src/lib/local-store';
 import { InterestsDialog } from '@/src/components/InterestsDialog';
 import styles from './feed.module.css';
@@ -82,6 +81,7 @@ function ArticleCard({ article, dim = false }: { article: Article; dim?: boolean
 export default function FeedPage() {
   const router = useRouter();
   const { token, ready, signOut: authSignOut } = useAuth();
+  const authFetch = useAuthFetch();
   const [feed, setFeed] = useState<FeedResponse>(EMPTY_FEED);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -107,11 +107,7 @@ export default function FeedPage() {
   const revalidate = useCallback(async (signal: AbortSignal) => {
     if (!token) return;
     try {
-      const res = await apiFetch(`${API_BASE}/feed`, {
-        headers: { Authorization: `Bearer ${token}` },
-        credentials: 'include',
-        signal,
-      });
+      const res = await authFetch(`${API_BASE}/feed`, { signal });
 
       if (signal.aborted) return;
       if (!res.ok) throw new Error('Failed to load feed');
@@ -124,13 +120,16 @@ export default function FeedPage() {
       setError(null);
     } catch (err) {
       if (signal.aborted) return;
+      // Session expired: signOut() already cleared the token; let the token→null
+      // useEffect redirect to '/' instead of showing an error card.
+      if (err instanceof SessionExpiredError) return;
       if (!hasCacheRef.current) {
         setError(err instanceof Error ? err.message : 'Something went wrong');
       }
     } finally {
       if (!signal.aborted) setLoading(false);
     }
-  }, [token]);
+  }, [authFetch, token]);
 
   useEffect(() => {
     if (!ready) return;

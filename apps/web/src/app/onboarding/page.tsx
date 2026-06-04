@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth, API_BASE } from '@/src/lib/auth-context';
-import { apiFetch } from '@/src/lib/server-status';
+import { useAuth, useAuthFetch, API_BASE, SessionExpiredError } from '@/src/lib/auth-context';
 import { INTEREST_TAGS } from '@/src/lib/interests';
 import styles from './onboarding.module.css';
 
@@ -12,22 +11,20 @@ const TAGS = INTEREST_TAGS;
 export default function OnboardingPage() {
   const router = useRouter();
   const { token, ready } = useAuth();
+  const authFetch = useAuthFetch();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ready || !token) return;
-    apiFetch(`${API_BASE}/users/interests`, {
-      headers: { Authorization: `Bearer ${token}` },
-      credentials: 'include',
-    })
+    authFetch(`${API_BASE}/users/interests`)
       .then((r) => r.json())
       .then((data) => {
         if (data.tags?.length) setSelected(new Set(data.tags));
       })
-      .catch(() => {});
-  }, [token, ready]);
+      .catch((err) => { if (err instanceof SessionExpiredError) router.push('/'); });
+  }, [token, ready, router]);
 
   const toggle = (tag: string) =>
     setSelected((prev) => {
@@ -40,18 +37,15 @@ export default function OnboardingPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await apiFetch(`${API_BASE}/users/interests`, {
+      const res = await authFetch(`${API_BASE}/users/interests`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tags: Array.from(selected) }),
       });
       if (!res.ok) throw new Error('Failed to save interests');
       router.push('/feed');
     } catch (err) {
+      if (err instanceof SessionExpiredError) { router.push('/'); return; }
       setError(err instanceof Error ? err.message : 'Something went wrong');
       setSaving(false);
     }

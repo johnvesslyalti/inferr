@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useAuth, API_BASE } from '@/src/lib/auth-context';
-import { apiFetch } from '@/src/lib/server-status';
+import { useAuth, useAuthFetch, API_BASE, SessionExpiredError } from '@/src/lib/auth-context';
 import styles from './chat.module.css';
 
 interface Source {
@@ -24,6 +23,7 @@ const SOURCE_LABEL: Record<string, string> = { hn: 'HN', devto: 'Dev.to' };
 export default function ChatPage() {
   const router = useRouter();
   const { token, ready, signOut: authSignOut } = useAuth();
+  const authFetch = useAuthFetch();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -55,12 +55,9 @@ export default function ChatPage() {
     }
 
     try {
-      const res = await apiFetch(`${API_BASE}/chat`, {
+      const res = await authFetch(`${API_BASE}/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message, history: historyForApi }),
       });
 
@@ -72,6 +69,7 @@ export default function ChatPage() {
         { role: 'assistant', content: data.answer, sources: data.sources },
       ]);
     } catch (err) {
+      if (err instanceof SessionExpiredError) { router.push('/'); return; }
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: err instanceof Error ? err.message : 'Something went wrong.' },

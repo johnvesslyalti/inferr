@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useAuth, API_BASE } from '@/src/lib/auth-context';
-import { apiFetch } from '@/src/lib/server-status';
+import { useAuth, useAuthFetch, API_BASE } from '@/src/lib/auth-context';
 import styles from './dashboard.module.css';
 
 interface UserProfile {
@@ -40,6 +39,7 @@ const features = [
 export default function DashboardPage() {
   const router = useRouter();
   const { token, ready, signOut } = useAuth();
+  const authFetch = useAuthFetch();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,10 +50,7 @@ export default function DashboardPage() {
 
     const fetchProfile = async () => {
       try {
-        const res = await apiFetch(`${API_BASE}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: 'include',
-        });
+        const res = await authFetch(`${API_BASE}/auth/me`);
 
         if (!res.ok) throw new Error('Failed to fetch profile');
         setUser(await res.json());
