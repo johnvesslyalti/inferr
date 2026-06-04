@@ -120,6 +120,9 @@ export default function FeedPage() {
       setError(null);
     } catch (err) {
       if (signal.aborted) return;
+      // Session expired: signOut() already cleared the token; let the token→null
+      // useEffect redirect to '/' instead of showing an error card.
+      if (err instanceof Error && err.message === 'Session expired') return;
       if (!hasCacheRef.current) {
         setError(err instanceof Error ? err.message : 'Something went wrong');
       }

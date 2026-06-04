@@ -67,8 +67,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // On mount: restore session via silent refresh
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    refreshToken().then((t) => {
-      if (t) scheduleProactiveRefresh(t, () => refreshToken());
+    if (!inflightRefresh) {
+      inflightRefresh = refreshToken().finally(() => { inflightRefresh = null; });
+    }
+    inflightRefresh.then((t) => {
+      if (t) scheduleProactiveRefresh(t, () => {
+        if (!inflightRefresh) {
+          inflightRefresh = refreshToken().finally(() => { inflightRefresh = null; });
+        }
+      });
     }).finally(() => setReady(true));
 
     return () => {
@@ -79,7 +86,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setToken = useCallback((newToken: string) => {
     setTokenState(newToken);
     rememberSession(decodeUserId(newToken));
-    scheduleProactiveRefresh(newToken, () => refreshToken());
+    scheduleProactiveRefresh(newToken, () => {
+      if (!inflightRefresh) {
+        inflightRefresh = refreshToken().finally(() => { inflightRefresh = null; });
+      }
+    });
   }, [scheduleProactiveRefresh, refreshToken]);
 
   const signOut = useCallback(async () => {
@@ -113,8 +124,10 @@ export function useAuthFetch() {
   useEffect(() => { tokenRef.current = token; }, [token]);
 
   return useCallback(async (url: string, options: RequestInit = {}): Promise<Response> => {
-    const withBearer = (t: string | null): RequestInit => ({
-      ...options,
+    const { signal, ...optionsWithoutSignal } = options;
+
+    const withBearer = (t: string | null, includeSignal: boolean): RequestInit => ({
+      ...(includeSignal ? options : optionsWithoutSignal),
       credentials: 'include' as const,
       headers: {
         ...(options.headers as Record<string, string> | undefined),
@@ -122,7 +135,7 @@ export function useAuthFetch() {
       },
     });
 
-    const res = await apiFetch(url, withBearer(tokenRef.current));
+    const res = await apiFetch(url, withBearer(tokenRef.current, true));
     if (res.status !== 401) return res;
 
     if (!inflightRefresh) {
@@ -131,7 +144,9 @@ export function useAuthFetch() {
     const newToken = await inflightRefresh;
     if (!newToken) { await signOut(); throw new Error('Session expired'); }
 
-    const retry = await apiFetch(url, withBearer(newToken));
+    // Strip signal from retry: the original signal may already be aborted while
+    // the refresh was in-flight, and we still want the retry to reach the server.
+    const retry = await apiFetch(url, withBearer(newToken, false));
     if (retry.status === 401) { await signOut(); throw new Error('Session expired'); }
 
     return retry;
