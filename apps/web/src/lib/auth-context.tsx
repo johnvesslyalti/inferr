@@ -42,6 +42,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Stable ref so doRefresh can reference itself without a circular useCallback dep.
   const doRefreshRef = useRef<() => void>(() => {});
+  // Tracks whether the latest fire-and-forget /auth/me fetch is still valid.
+  // Flipped to false by signOut to prevent a racing fetch from restoring stale user data.
+  const profileFetchActiveRef = useRef(false);
 
   const scheduleProactiveRefresh = useCallback((accessToken: string, doRefresh: () => void) => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
@@ -68,12 +71,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const data = await res.json() as { accessToken: string };
           setTokenState(data.accessToken);
           rememberSession(decodeUserId(data.accessToken));
-          // Fetch profile once per session so all navbars share user data.
+          // Fetch profile so all navbars share user data. Guard with a ref
+          // so a concurrent signOut can't restore stale user data after clearing it.
+          profileFetchActiveRef.current = true;
           apiFetch(`${API_BASE}/auth/me`, {
             headers: { Authorization: `Bearer ${data.accessToken}` },
             credentials: 'include',
           }).then((r) => r.ok ? r.json() : null)
-            .then((u) => { if (u) setUser(u as AuthUser); })
+            .then((u) => { if (u && profileFetchActiveRef.current) setUser(u as AuthUser); })
             .catch(() => {});
           return data.accessToken;
         }
@@ -128,6 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    profileFetchActiveRef.current = false; // cancel any in-flight /auth/me
     try {
       await apiFetch(`${API_BASE}/auth/logout`, {
         method: 'POST',

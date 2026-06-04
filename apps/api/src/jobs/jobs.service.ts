@@ -114,20 +114,23 @@ Rules:
 
     try {
       const response = await this.aiService.chat(prompt);
-      // GPT sometimes wraps output in markdown fences despite the prompt instruction.
-      const clean = response.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      // Strip any markdown fences GPT may add despite the prompt instruction.
+      // Matches opening fence with any language tag (```json, ```javascript, etc.)
+      const clean = response.replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim();
       const parsed = JSON.parse(clean) as TrendingRole[];
       this.cachedMarketReport = { roles: parsed, generatedAt: new Date().toISOString() };
       this.cacheGeneratedAt = new Date();
       return this.cachedMarketReport;
     } catch (err) {
       this.logger.error('Failed to generate market report', err);
-      // Cache the failure for 1 hour to avoid hammering OpenAI on every request
-      // when GPT returns consistently malformed output.
+      // Rate-limit retries: arm a 1-hour penalty on every failure by always
+      // updating cacheGeneratedAt. Without this, the guard below would skip
+      // the update after the first failure, leaving cacheGeneratedAt frozen
+      // and causing every request after the first cooldown to re-call OpenAI.
       if (!this.cachedMarketReport) {
         this.cachedMarketReport = { roles: [], generatedAt: new Date().toISOString() };
-        this.cacheGeneratedAt = new Date(Date.now() - 23 * 60 * 60 * 1000); // expires in 1h
       }
+      this.cacheGeneratedAt = new Date(Date.now() - 23 * 60 * 60 * 1000); // 1h effective TTL
       return { roles: [], generatedAt: new Date().toISOString() };
     }
   }
