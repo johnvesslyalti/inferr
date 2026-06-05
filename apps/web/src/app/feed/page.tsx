@@ -195,12 +195,14 @@ export default function FeedPage() {
         />
       )}
       <nav className={styles.nav}>
-        <div className={styles.logo}>
-          <Image src="/logo.png" alt="Logo" width={22} height={22} style={{ borderRadius: '4px' }} />
-          <span className={styles.logoText}>inferr</span>
-        </div>
-        <div className={styles.navRight}>
-          <ProfileMenu onEditInterests={() => setShowInterests(true)} />
+        <div className={styles.navInner}>
+          <div className={styles.logo}>
+            <Image src="/logo.png" alt="Logo" width={18} height={18} style={{ borderRadius: '4px' }} />
+            <span className={styles.logoText}>inferr</span>
+          </div>
+          <div className={styles.navRight}>
+            <ProfileMenu onEditInterests={() => setShowInterests(true)} />
+          </div>
         </div>
       </nav>
 
