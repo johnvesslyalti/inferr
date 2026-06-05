@@ -181,7 +181,7 @@ export default function FeedPage() {
     (feed?.fallback?.length ?? 0) === 0;
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} pageGlow`}>
       {showInterests && (
         <InterestsDialog
           onClose={() => setShowInterests(false)}
@@ -194,7 +194,7 @@ export default function FeedPage() {
           }}
         />
       )}
-      <nav className={styles.nav}>
+      <nav className={`${styles.nav} glassNav`}>
         <div className={styles.navInner}>
           <div className={styles.logo}>
             <Image src="/logo.png" alt="Logo" width={18} height={18} style={{ borderRadius: '4px' }} />

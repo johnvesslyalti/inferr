@@ -87,11 +87,11 @@ export default function TechMarketPage() {
     : '—';
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} pageGlow`}>
       {showInterests && (
         <InterestsDialog onClose={() => setShowInterests(false)} />
       )}
-      <nav className={styles.nav}>
+      <nav className={`${styles.nav} glassNav`}>
         <div className={styles.logo}>
           <Image src="/logo.png" alt="Logo" width={22} height={22} style={{ borderRadius: '4px' }} />
           <span className={styles.logoText}>inferr</span>

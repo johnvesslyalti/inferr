@@ -97,9 +97,9 @@ export default function DashboardPage() {
   const initials = user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} pageGlow`}>
       {/* Navbar */}
-      <nav className={styles.navbar}>
+      <nav className={`${styles.navbar} glassNav`}>
         <div className={styles.navContent}>
           <div className={styles.logo}>
             <Image src="/logo.png" alt="Logo" width={24} height={24} style={{ borderRadius: '4px' }} />
