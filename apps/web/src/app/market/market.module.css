@@ -43,7 +43,7 @@
   backdrop-filter: blur(14px);
 }
 
-.logo { display: flex; align-items: center; gap: 8px; }
+.logo { display: flex; align-items: center; gap: 0.6rem; }
 
 .logoText {
   font-family: var(--font-mono);
