@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth, useAuthFetch, API_BASE, SessionExpiredError } from '@/src/lib/auth-context';
+import { ProfileMenu } from '@/src/components/ProfileMenu';
+import { InterestsDialog } from '@/src/components/InterestsDialog';
 import styles from './chat.module.css';
 
 interface Source {
@@ -22,11 +24,12 @@ const SOURCE_LABEL: Record<string, string> = { hn: 'HN', devto: 'Dev.to' };
 
 export default function ChatPage() {
   const router = useRouter();
-  const { token, ready, signOut: authSignOut } = useAuth();
+  const { token, ready } = useAuth();
   const authFetch = useAuthFetch();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showInterests, setShowInterests] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -92,22 +95,18 @@ export default function ChatPage() {
     e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
   };
 
-  const signOut = async () => {
-    await authSignOut();
-    router.push('/');
-  };
-
   return (
     <div className={styles.page}>
+      {showInterests && (
+        <InterestsDialog onClose={() => setShowInterests(false)} />
+      )}
       <nav className={styles.nav}>
         <div className={styles.logo}>
           <Image src="/logo.png" alt="Logo" width={22} height={22} style={{ borderRadius: '4px' }} />
           <span className={styles.logoText}>inferr</span>
         </div>
         <div className={styles.navRight}>
-          <a href="/feed" className={styles.navLink}>feed</a>
-          {/* interests editor is available via the feed page (edit interests button opens dialog) */}
-          <button onClick={signOut} className={styles.signOut}>sign out</button>
+          <ProfileMenu onEditInterests={() => setShowInterests(true)} />
         </div>
       </nav>
 

@@ -83,6 +83,28 @@ export const userInterests = pgTable('user_interests', {
   tags: text('tags').array().notNull().default([]),
 });
 
+export const jobs = pgTable(
+  'jobs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    externalId: varchar('external_id', { length: 255 }).notNull().unique(),
+    title: varchar('title', { length: 500 }).notNull(),
+    url: varchar('url', { length: 2048 }).notNull(),
+    company: varchar('company', { length: 255 }),
+    category: varchar('category', { length: 255 }),
+    tags: text('tags').array().notNull().default([]),
+    jobType: varchar('job_type', { length: 100 }),
+    location: varchar('location', { length: 255 }),
+    salary: varchar('salary', { length: 255 }),
+    publishedAt: timestamp('published_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    index('jobs_category_idx').on(t.category),
+    index('jobs_published_at_idx').on(t.publishedAt),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Article = typeof articles.$inferSelect;
@@ -91,3 +113,5 @@ export type UserInterest = typeof userInterests.$inferSelect;
 export type NewUserInterest = typeof userInterests.$inferInsert;
 export type RefreshToken = typeof refreshTokens.$inferSelect;
 export type NewRefreshToken = typeof refreshTokens.$inferInsert;
+export type Job = typeof jobs.$inferSelect;
+export type NewJob = typeof jobs.$inferInsert;

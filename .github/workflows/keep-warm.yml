@@ -1,0 +1,23 @@
+name: Keep Render Warm
+
+on:
+  schedule:
+    # Every 10 minutes from 00:30–18:30 UTC (06:00–00:00 IST)
+    # Keeps the Render free instance awake during active hours without
+    # exhausting the 750 hr/month free budget (~480 hrs used vs 730 for 24/7).
+    - cron: '0/10 0-18 * * *'
+  workflow_dispatch: # allow manual trigger from GitHub UI
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: |
+          curl -sf https://api.inferr.xyz/health \
+            --max-time 60 \
+            --retry 2 \
+            --retry-delay 10 \
+            --retry-all-errors \
+            && echo "Server is warm" \
+            || echo "Ping failed (server may be waking up)"

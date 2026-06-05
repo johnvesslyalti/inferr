@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useAuth, useAuthFetch, API_BASE, SessionExpiredError } from '@/src/lib/auth-context';
 import { getSessionHint, readFeedCache, writeFeedCache } from '@/src/lib/local-store';
 import { InterestsDialog } from '@/src/components/InterestsDialog';
+import { ProfileMenu } from '@/src/components/ProfileMenu';
 import styles from './feed.module.css';
 
 interface Article {
@@ -84,7 +85,7 @@ function ArticleCard({ article }: { article: Article }) {
 
 export default function FeedPage() {
   const router = useRouter();
-  const { token, ready, signOut: authSignOut } = useAuth();
+  const { token, ready } = useAuth();
   const authFetch = useAuthFetch();
   const [feed, setFeed] = useState<FeedResponse>(EMPTY_FEED);
   const [loading, setLoading] = useState(true);
@@ -199,9 +200,7 @@ export default function FeedPage() {
           <span className={styles.logoText}>inferr</span>
         </div>
         <div className={styles.navRight}>
-          <a href="/chat" className={styles.navLink}>chat</a>
-          <button onClick={() => setShowInterests(true)} className={styles.navLink}>edit interests</button>
-          <button onClick={async () => { await authSignOut(); router.push('/'); }} className={styles.signOut}>sign out</button>
+          <ProfileMenu onEditInterests={() => setShowInterests(true)} />
         </div>
       </nav>
 

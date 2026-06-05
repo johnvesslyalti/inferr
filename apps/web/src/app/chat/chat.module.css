@@ -48,6 +48,24 @@
 
 .navLink:hover { color: var(--accent); }
 
+.navLinkNew {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.newBadge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: linear-gradient(135deg, #5b9dff, #8b6dff);
+  border-radius: 4px;
+  padding: 1px 5px;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
 .signOut {
   font-size: 0.875rem;
   color: var(--text-muted);

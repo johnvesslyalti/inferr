@@ -27,7 +27,7 @@ export function InterestsDialog({ onClose, onSaved }: Props) {
       .then((r) => r.json())
       .then((data) => { if (data.tags?.length) setSelected(new Set(data.tags)); })
       .catch((err) => { if (err instanceof SessionExpiredError) onClose(); });
-  }, [token, onClose]);
+  }, [token, onClose, authFetch]);
 
   // Close on ESC
   useEffect(() => {
