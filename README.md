@@ -9,7 +9,7 @@ Personalized developer news feed powered by AI. Sign in with Google, pick intere
 | Frontend | Next.js 15, Tailwind CSS, TypeScript |
 | Backend | NestJS 11, TypeScript |
 | Database | PostgreSQL 16 + pgvector (Neon in prod, Docker locally) |
-| Scheduling | GitHub Actions cron → `POST /scraper/run` (wakes Render free-tier + triggers pipeline); `@nestjs/schedule` in-process fallback |
+| Scheduling | External cron (cron-job.org) pings `/health` every 10 min during active hours to keep the Render free-tier warm; GitHub Actions cron → `POST /scraper/run` runs the daily pipeline; `@nestjs/schedule` in-process fallback |
 | ORM | Drizzle ORM |
 | AI | OpenAI `gpt-4o-mini` + `text-embedding-3-small`; LangGraph agentic pipeline |
 | Auth | Google OAuth 2.0 → hashed refresh token (HttpOnly cookie, 7d) + short-lived JWT access token (15m) |
@@ -219,5 +219,7 @@ POST /auth/logout → revoke refresh token, clear cookie
 ## Deployment
 
 **API (Render):** Set env vars, deploy from `Dockerfile`. `DATABASE_URL` overrides the individual `DB_*` vars. A daily GitHub Actions workflow (`.github/workflows/daily-scrape.yml`) calls `POST /scraper/run` with `SCRAPER_API_KEY` — add that secret to both Render and the GitHub repo.
+
+**Keeping the free-tier API warm:** Render's free instance sleeps after 15 min idle. GitHub Actions cron is too unreliable for short-interval keep-alive pings, so an external pinger ([cron-job.org](https://cron-job.org)) does a `GET https://api.inferr.xyz/health` every 10 min, restricted to hours 0–18 UTC (~06:00–24:00 IST) to stay within the 750 hr/month budget. The instance is allowed to sleep overnight; the web app's wake overlay (`apps/web/src/lib/server-status.tsx`) covers the first cold request.
 
 **Web (Vercel):** Set `NEXT_PUBLIC_API_URL` to the Render API URL. `vercel.json` at root handles the monorepo build pointing to `apps/web`.
