@@ -62,7 +62,7 @@ export default function TechMarketPage() {
 
   if (!ready || !token || loading) {
     return (
-      <div className={styles.page}>
+      <div className={`${styles.page} pageGlow`}>
         <div className={styles.loadingScreen}>
           <div className={styles.spinner} />
           <p className={styles.loadingText}>analysing market data…</p>
@@ -73,7 +73,7 @@ export default function TechMarketPage() {
 
   if (error) {
     return (
-      <div className={styles.page}>
+      <div className={`${styles.page} pageGlow`}>
         <div className={styles.loadingScreen}>
           <p className={styles.errorText}>{error}</p>
           <button onClick={() => window.location.reload()} className={styles.retryBtn}>Retry</button>

@@ -71,7 +71,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className={styles.loadingScreen}>
+      <div className={`${styles.loadingScreen} pageGlow`}>
         <div className={styles.loadingInner}>
           <div className={styles.spinner} />
           <p className={styles.loadingText}>authenticating</p>
@@ -82,7 +82,7 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className={styles.loadingScreen}>
+      <div className={`${styles.loadingScreen} pageGlow`}>
         <div className={styles.errorCard}>
           <p className={styles.errorTitle}>access denied</p>
           <p className={styles.errorMsg}>{error}</p>

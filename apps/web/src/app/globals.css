@@ -86,6 +86,11 @@ input { font-family: var(--font-body); }
   backdrop-filter: blur(14px);
 }
 
+/* Opaque fallback where backdrop-filter is unsupported, so nav text stays legible */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glassNav { background: rgba(10, 10, 10, 0.92); }
+}
+
 @media (max-width: 768px) {
   .glassNav { margin: 0.75rem auto 0; width: calc(100% - 2rem); }
 }
