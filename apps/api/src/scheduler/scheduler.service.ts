@@ -20,6 +20,11 @@ export class SchedulerService {
     try {
       const saved = await this.jobsService.scrapeRemotive();
       this.logger.log(`Jobs scraped: ${saved} new listings`);
+
+      // Refresh the persisted market report off the fresh data so user requests
+      // never trigger the OpenAI call synchronously.
+      const report = await this.jobsService.generateMarketReport();
+      this.logger.log(`Market report refreshed: ${report.roles.length} roles`);
     } catch (err) {
       this.logger.error(
         'Daily job scrape failed',

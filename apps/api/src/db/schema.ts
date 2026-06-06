@@ -7,6 +7,7 @@ import {
   customType,
   text,
   boolean,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 
 const vector = (name: string, dimensions: number) =>
@@ -105,6 +106,14 @@ export const jobs = pgTable(
   ],
 );
 
+export const marketReports = pgTable('market_reports', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  roles: jsonb('roles')
+    .$type<{ role: string; demand: number; trend: string }[]>()
+    .notNull(),
+  generatedAt: timestamp('generated_at').defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Article = typeof articles.$inferSelect;
@@ -115,3 +124,5 @@ export type RefreshToken = typeof refreshTokens.$inferSelect;
 export type NewRefreshToken = typeof refreshTokens.$inferInsert;
 export type Job = typeof jobs.$inferSelect;
 export type NewJob = typeof jobs.$inferInsert;
+export type MarketReportRow = typeof marketReports.$inferSelect;
+export type NewMarketReportRow = typeof marketReports.$inferInsert;
