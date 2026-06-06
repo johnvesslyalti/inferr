@@ -57,6 +57,13 @@
       "when": 1748956800000,
       "tag": "0007_jobs_table",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780730351017,
+      "tag": "0008_tan_the_spike",
+      "breakpoints": true
     }
   ]
 }

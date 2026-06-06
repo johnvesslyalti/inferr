@@ -2,8 +2,10 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { desc, gte } from 'drizzle-orm';
 import { DRIZZLE } from '../db/drizzle.provider';
 import type { DrizzleDB } from '../db/drizzle.provider';
-import { jobs, NewJob } from '../db/schema';
+import { jobs, marketReports, NewJob } from '../db/schema';
 import { AiService } from '../ai/ai.service';
+
+const MARKET_REPORT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 interface RemotiveJob {
   id: number;
@@ -40,24 +42,61 @@ export interface JobReport {
 @Injectable()
 export class JobsService {
   private readonly logger = new Logger(JobsService.name);
-  private cachedMarketReport: MarketReport | null = null;
-  private cacheGeneratedAt: Date | null = null;
+  // De-dupes concurrent generations within a single process so a burst of
+  // requests after a cold start triggers at most one OpenAI call.
+  private inFlight: Promise<MarketReport> | null = null;
 
   constructor(
     @Inject(DRIZZLE) private db: DrizzleDB,
     private readonly aiService: AiService,
   ) {}
 
+  /**
+   * Returns the latest market report. The OpenAI call is NOT made per request —
+   * the result is persisted in the `market_reports` table and refreshed at most
+   * once per 24h (or by the daily cron). This survives process restarts and is
+   * shared across instances, unlike the previous in-memory cache.
+   */
   async getMarketReport(): Promise<MarketReport> {
-    // Cache for 24 hours — we only call OpenAI once per day
-    if (
-      this.cachedMarketReport &&
-      this.cacheGeneratedAt &&
-      Date.now() - this.cacheGeneratedAt.getTime() < 24 * 60 * 60 * 1000
-    ) {
-      return this.cachedMarketReport;
+    const latest = await this.getLatestStoredReport();
+
+    if (latest && Date.now() - latest.generatedAt.getTime() < MARKET_REPORT_TTL_MS) {
+      return { roles: latest.roles, generatedAt: latest.generatedAt.toISOString() };
     }
 
+    // Stale or missing → (re)generate. Coalesce concurrent callers onto one call.
+    if (!this.inFlight) {
+      this.inFlight = this.generateMarketReport().finally(() => {
+        this.inFlight = null;
+      });
+    }
+
+    try {
+      return await this.inFlight;
+    } catch (err) {
+      this.logger.error('Failed to generate market report', err);
+      // Fall back to a stale row if we have one, rather than erroring the page.
+      if (latest) {
+        return { roles: latest.roles, generatedAt: latest.generatedAt.toISOString() };
+      }
+      return { roles: [], generatedAt: new Date().toISOString() };
+    }
+  }
+
+  private async getLatestStoredReport() {
+    const [row] = await this.db
+      .select()
+      .from(marketReports)
+      .orderBy(desc(marketReports.generatedAt))
+      .limit(1);
+    return row ?? null;
+  }
+
+  /**
+   * Calls OpenAI to build a fresh report and persists it. Invoked on-demand when
+   * the stored report is stale, and by the daily scheduler.
+   */
+  async generateMarketReport(): Promise<MarketReport> {
     const since = new Date();
     since.setDate(since.getDate() - 30);
 
@@ -112,27 +151,19 @@ Rules:
 - Sort by demand descending
 - Return exactly 8 fields`;
 
-    try {
-      const response = await this.aiService.chat(prompt);
-      // Strip any markdown fences GPT may add despite the prompt instruction.
-      // Matches opening fence with any language tag (```json, ```javascript, etc.)
-      const clean = response.replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim();
-      const parsed = JSON.parse(clean) as TrendingRole[];
-      this.cachedMarketReport = { roles: parsed, generatedAt: new Date().toISOString() };
-      this.cacheGeneratedAt = new Date();
-      return this.cachedMarketReport;
-    } catch (err) {
-      this.logger.error('Failed to generate market report', err);
-      // Rate-limit retries: arm a 1-hour penalty on every failure by always
-      // updating cacheGeneratedAt. Without this, the guard below would skip
-      // the update after the first failure, leaving cacheGeneratedAt frozen
-      // and causing every request after the first cooldown to re-call OpenAI.
-      if (!this.cachedMarketReport) {
-        this.cachedMarketReport = { roles: [], generatedAt: new Date().toISOString() };
-      }
-      this.cacheGeneratedAt = new Date(Date.now() - 23 * 60 * 60 * 1000); // 1h effective TTL
-      return { roles: [], generatedAt: new Date().toISOString() };
-    }
+    const response = await this.aiService.chat(prompt);
+    // Strip any markdown fences GPT may add despite the prompt instruction.
+    // Matches opening fence with any language tag (```json, ```javascript, etc.)
+    const clean = response.replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim();
+    const roles = JSON.parse(clean) as TrendingRole[];
+
+    const [saved] = await this.db
+      .insert(marketReports)
+      .values({ roles })
+      .returning();
+
+    this.logger.log(`Generated market report (${roles.length} roles)`);
+    return { roles: saved.roles, generatedAt: saved.generatedAt.toISOString() };
   }
 
   async scrapeRemotive(): Promise<number> {
