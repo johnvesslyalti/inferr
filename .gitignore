@@ -23,6 +23,9 @@ coverage/
 
 # misc
 .DS_Store
+package-lock.json
+*.tgz
+opencode.json
 .idea/
 .vscode/
 *.swp

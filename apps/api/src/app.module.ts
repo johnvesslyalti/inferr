@@ -12,6 +12,7 @@ import { AiModule } from './ai/ai.module';
 import { FeedModule } from './feed/feed.module';
 import { ChatModule } from './chat/chat.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
+import { McpModule } from './mcp/mcp.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
 @Module({
@@ -27,6 +28,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     FeedModule,
     ChatModule,
     SchedulerModule,
+    McpModule,
   ],
   controllers: [AppController],
   providers: [AppService],
