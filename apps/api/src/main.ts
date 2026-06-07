@@ -5,9 +5,11 @@ import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
 import { AppModule } from './app.module';
 import { DRIZZLE } from './db/drizzle.provider';
 import type { DrizzleDB } from './db/drizzle.provider';
+import { McpOAuthProvider } from './mcp/mcp-oauth.provider';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
@@ -38,6 +40,27 @@ async function bootstrap() {
   logger.log('Migrations applied');
 
   app.use(cookieParser());
+
+  // Mount the MCP OAuth 2.1 authorization server. This installs the standard
+  // endpoints (/.well-known/oauth-authorization-server, /.well-known/oauth-
+  // protected-resource/mcp, /mcp/authorize, /mcp/token, /mcp/register,
+  // /mcp/revoke) directly on the underlying Express app. It must be registered
+  // before app.listen(); the well-known routes live at the application root.
+  const mcpOAuthProvider = app.get(McpOAuthProvider);
+  const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
+  const expressApp = app.getHttpAdapter().getInstance() as {
+    use: (handler: unknown) => void;
+  };
+  expressApp.use(
+    mcpAuthRouter({
+      provider: mcpOAuthProvider,
+      issuerUrl: new URL(apiUrl),
+      baseUrl: new URL(`${apiUrl}/mcp`),
+      scopesSupported: ['mcp'],
+      resourceName: 'Inferr MCP Server',
+    }),
+  );
+
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalFilters(new GlobalExceptionFilter());
 

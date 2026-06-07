@@ -15,19 +15,23 @@ import { AgenticRagService } from '../chat/agentic-rag.service';
 @Injectable()
 export class McpService implements OnModuleDestroy {
   private readonly logger = new Logger(McpService.name);
-  private readonly mcpServer: McpServer;
   private readonly transports = new Map<string, StreamableHTTPServerTransport>();
+  private readonly sessionUsers = new Map<string, string>();
 
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly aiService: AiService,
     private readonly feedService: FeedService,
     private readonly agenticRag: AgenticRagService,
-  ) {
-    this.mcpServer = this.buildServer();
-  }
+  ) {}
 
-  private buildServer(): McpServer {
+  /**
+   * Builds a per-session MCP server whose tools are bound to one authenticated
+   * user. Because each connection authenticates as a specific user, the tools
+   * close over that `userId` — `get_personalized_feed` never accepts it as a
+   * caller-supplied argument, which prevents one user reading another's feed.
+   */
+  private buildServerForUser(userId: string): McpServer {
     const server = new McpServer({ name: 'inferr', version: '1.0.0' });
 
     server.tool(
@@ -68,9 +72,9 @@ export class McpService implements OnModuleDestroy {
 
     server.tool(
       'get_personalized_feed',
-      "Fetch today's personalized article feed for an Inferr user based on their saved interests. Use when the user asks for recommendations or what to read today.",
-      { userId: z.string().uuid().describe('The Inferr user UUID') },
-      async ({ userId }) => {
+      "Fetch today's personalized article feed for the authenticated Inferr user based on their saved interests. Use when the user asks for recommendations or what to read today.",
+      {},
+      async () => {
         const feed = await this.feedService.getPersonalizedFeed(userId);
         const articles = feed.hasMatches ? feed.articles : feed.fallback;
         const label = feed.hasMatches
@@ -95,7 +99,7 @@ export class McpService implements OnModuleDestroy {
       'Ask a technical question and get an answer grounded in the Inferr article knowledge base. Uses a full agentic RAG pipeline (retrieve → grade → rewrite → generate). Use when the user wants a detailed explanation or answer about a software development topic.',
       { question: z.string().describe('A technical question for software developers') },
       async ({ question }) => {
-        const result = await this.agenticRag.query('mcp-anonymous', question, []);
+        const result = await this.agenticRag.query(userId, question, []);
 
         const sources =
           result.sources.length > 0
@@ -113,12 +117,18 @@ export class McpService implements OnModuleDestroy {
     return isInitializeRequest(body);
   }
 
-  createTransport(): StreamableHTTPServerTransport {
+  /**
+   * Creates a transport for a freshly authenticated session and connects it to
+   * a user-scoped MCP server. The caller (controller) then hands the HTTP
+   * request to the returned transport.
+   */
+  async createTransport(userId: string): Promise<StreamableHTTPServerTransport> {
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: (sessionId) => {
-        this.logger.log(`MCP session opened: ${sessionId}`);
+        this.logger.log(`MCP session opened: ${sessionId} (user ${userId})`);
         this.transports.set(sessionId, transport);
+        this.sessionUsers.set(sessionId, userId);
       },
     });
 
@@ -127,9 +137,12 @@ export class McpService implements OnModuleDestroy {
       if (sid) {
         this.logger.log(`MCP session closed: ${sid}`);
         this.transports.delete(sid);
+        this.sessionUsers.delete(sid);
       }
     };
 
+    const server = this.buildServerForUser(userId);
+    await server.connect(transport);
     return transport;
   }
 
@@ -141,8 +154,8 @@ export class McpService implements OnModuleDestroy {
     return this.transports.has(sessionId);
   }
 
-  getMcpServer(): McpServer {
-    return this.mcpServer;
+  getUserIdForSession(sessionId: string): string | undefined {
+    return this.sessionUsers.get(sessionId);
   }
 
   async onModuleDestroy() {
@@ -151,5 +164,6 @@ export class McpService implements OnModuleDestroy {
       await transport.close();
     }
     this.transports.clear();
+    this.sessionUsers.clear();
   }
 }

@@ -77,6 +77,26 @@ export const refreshTokens = pgTable(
   (t) => [index('refresh_tokens_token_idx').on(t.token)],
 );
 
+export const mcpTokens = pgTable(
+  'mcp_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: varchar('token_hash', { length: 255 }).notNull().unique(),
+    expiresAt: timestamp('expires_at').notNull(),
+    revoked: boolean('revoked').notNull().default(false),
+    revokedAt: timestamp('revoked_at'),
+    replacedByHash: varchar('replaced_by_hash', { length: 255 }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    index('mcp_tokens_token_hash_idx').on(t.tokenHash),
+    index('mcp_tokens_user_id_idx').on(t.userId),
+  ],
+);
+
 export const userInterests = pgTable('user_interests', {
   userId: uuid('user_id')
     .primaryKey()
@@ -122,6 +142,8 @@ export type UserInterest = typeof userInterests.$inferSelect;
 export type NewUserInterest = typeof userInterests.$inferInsert;
 export type RefreshToken = typeof refreshTokens.$inferSelect;
 export type NewRefreshToken = typeof refreshTokens.$inferInsert;
+export type McpToken = typeof mcpTokens.$inferSelect;
+export type NewMcpToken = typeof mcpTokens.$inferInsert;
 export type Job = typeof jobs.$inferSelect;
 export type NewJob = typeof jobs.$inferInsert;
 export type MarketReportRow = typeof marketReports.$inferSelect;
