@@ -66,12 +66,16 @@ export class McpOAuthProvider
   private readonly logger = new Logger(McpOAuthProvider.name);
 
   // Registered MCP clients (Claude Desktop registers itself on each startup).
+  // TODO: persist to DB so clients survive API restarts without re-registering.
   private readonly clients = new Map<string, OAuthClientInformationFull>();
 
   // mcpState -> the authorization request we parked before redirecting to Google.
+  // TODO: move to Redis/DB before running multiple API instances — an auth flow
+  // started on instance A will fail if the Google callback lands on instance B.
   private readonly pendingMcpAuthorizations = new Map<string, PendingAuthorization>();
 
   // authCode -> the data needed to fulfil the PKCE token exchange.
+  // Same single-instance caveat as pendingMcpAuthorizations above.
   private readonly pendingAuthCodes = new Map<string, PendingAuthCode>();
 
   private cleanupTimer?: NodeJS.Timeout;
