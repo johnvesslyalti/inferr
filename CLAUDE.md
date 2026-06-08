@@ -58,6 +58,17 @@ The `articles.embedding` and `document_embeddings.embedding` columns are `vector
 
 **Drizzle config** lives at `apps/api/drizzle.config.ts` with `ssl: false` for local Docker Postgres. Migration files output to `apps/api/drizzle/`.
 
+#### Migration discipline (IMPORTANT)
+
+**Never edit, renumber, or backdate a migration once it has been applied anywhere (local, CI, or prod). Only ever add a NEW migration.** If a migration is wrong, fix it forward with a new one.
+
+Why this matters here: production and local already have **drifted migration history** because earlier migrations were edited after the fact (e.g. `0006` was rewritten to add `DROP TABLE IF EXISTS`, `0003`/`0007` were backdated, `0007_jobs_table` was renumbered when merged from another branch). Each database froze a different snapshot, so neither `__drizzle_migrations` log perfectly matches the repo journal. This is currently **cosmetic and safe** — `drizzle-kit migrate` decides what to apply by the journal `when` *timestamp*, not by hash, and all real tables/data are correct. Editing applied migrations is what caused the drift; keep doing it and you risk "table already exists" failures or silently-skipped migrations.
+
+Rules of thumb:
+- Schema change → `npm run db:generate` (creates a new file), then `npm run db:migrate`. Don't hand-edit generated SQL for already-applied versions.
+- New migrations always get a `when = Date.now()` greater than the current max, so they apply cleanly to both drifted databases.
+- For prod (Neon), run migrations against `DATABASE_URL` pointed at Neon with `DB_SSL=true`. Verify the target and that the change is additive before applying.
+
 ### NestJS API modules
 
 | Module | Responsibility |
@@ -100,6 +111,7 @@ OPENAI_API_KEY=           # Required for embeddings and RAG
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback
+GOOGLE_MCP_CALLBACK_URL=http://localhost:3001/auth/google/mcp-callback  # MCP OAuth flow
 ```
 
 ### Bruno API collection

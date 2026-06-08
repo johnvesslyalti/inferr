@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { Geist_Mono, DM_Sans } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/src/lib/auth-context'
-import { ServerStatusProvider } from '@/src/lib/server-status'
 import './globals.css'
 
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
@@ -21,11 +20,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistMono.variable} ${dmSans.variable}`}>
       <body>
-        <ServerStatusProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-        </ServerStatusProvider>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         <Analytics />
       </body>
     </html>

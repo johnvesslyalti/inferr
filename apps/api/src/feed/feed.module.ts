@@ -8,5 +8,6 @@ import { AuthModule } from '../auth/auth.module';
   imports: [AiModule, AuthModule],
   providers: [FeedService],
   controllers: [FeedController],
+  exports: [FeedService],
 })
 export class FeedModule {}

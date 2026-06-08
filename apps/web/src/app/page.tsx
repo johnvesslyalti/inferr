@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import styles from './page.module.css'
 import { API_BASE as API_URL, useAuth } from '@/src/lib/auth-context'
-import { wakeServer } from '@/src/lib/server-status'
 
 const GITHUB_URL = 'https://github.com/johnvesslyalti/ai-developer-feed'
 const X_URL = 'https://x.com/zavxai'
@@ -145,13 +144,10 @@ export default function Home() {
   const router = useRouter()
   const { token, ready } = useAuth()
 
-  // Pre-warm the (possibly asleep) Render API before navigating to OAuth, so
-  // the user sees our wake overlay instead of Render's cold-start page.
   const handleSignIn = async (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault()
     if (signingIn) return
     setSigningIn(true)
-    await wakeServer()
     window.location.href = `${API_URL}/auth/google`
   }
 

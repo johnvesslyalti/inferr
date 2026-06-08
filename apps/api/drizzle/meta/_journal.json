@@ -64,6 +64,13 @@
       "when": 1780730351017,
       "tag": "0008_tan_the_spike",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781006400000,
+      "tag": "0009_mcp_tokens",
+      "breakpoints": true
     }
   ]
 }
