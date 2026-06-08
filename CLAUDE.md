@@ -50,7 +50,7 @@ docker compose ps       # Verify healthy
 ### Database
 PostgreSQL with **pgvector** extension via `pgvector/pgvector:pg16` Docker image. Drizzle ORM is used throughout — no TypeORM, no Prisma.
 
-**Schema tables:** `users`, `articles`, `user_interests`, `document_embeddings`
+**Schema tables:** `users`, `articles`, `user_interests`, `document_embeddings`, `mcp_tokens`
 
 The `articles.embedding` and `document_embeddings.embedding` columns are `vector(1536)` (OpenAI `text-embedding-3-small`). Vector similarity search uses the native `<=>` operator via raw SQL.
 
@@ -78,6 +78,8 @@ Rules of thumb:
 | `UsersModule` | DB upsert/lookup for users; used by AuthModule |
 | `RAGModule` | OpenAI embeddings + pgvector similarity search + GPT-4o-mini generation |
 | `ScraperModule` | Fetches top 30 articles from HN Algolia API and Dev.to, deduplicates by URL |
+| `McpModule` | MCP server over Streamable HTTP at `POST/GET/DELETE /mcp`; exposes 3 tools |
+| `McpAuthModule` | Standalone OAuth 2.1 provider (`McpOAuthProvider`); breaks circular dep between `AuthModule` ↔ `McpModule` |
 
 **DB injection pattern** — every service that needs the DB injects it the same way:
 ```typescript
@@ -92,11 +94,33 @@ constructor(@Inject(DRIZZLE) private db: DrizzleDB) {}
 3. Frontend stores `user.id` UUID as the auth token in `localStorage` + `google_id_token` cookie
 4. Protected API calls send `Authorization: Bearer <user.id>`; `GoogleTokenGuard` validates by DB lookup (no JWT)
 
+### MCP auth flow (OAuth 2.1 + Google)
+1. MCP client (Claude Desktop / Claude Code) registers at `POST /register` → gets a `client_id`
+2. Client opens `GET /authorize` (PKCE) → `McpOAuthProvider` redirects to `GET /auth/google/mcp?state=…`
+3. `GoogleMcpStrategy` (separate from the web-app strategy) carries the MCP `state` through Google consent
+4. Google → `GET /auth/google/mcp-callback` → upserts user → `completeMcpAuthorization()` issues a single-use auth code
+5. Client exchanges code for tokens at `POST /token` (PKCE verified) → receives a 1h JWT access token + 7d refresh token
+6. MCP requests hit `POST /GET /DELETE /mcp` with `Authorization: Bearer <jwt>`; `McpOAuthProvider.verifyAccessToken()` validates and extracts `userId`
+7. Each session gets a per-user `McpServer` instance — tools close over `userId` so one user cannot read another's feed
+
+**MCP tools exposed:**
+
+| Tool | Description |
+|---|---|
+| `search_articles` | pgvector semantic search over the article corpus |
+| `get_personalized_feed` | Returns the authenticated user's personalised feed |
+| `ask_inferr` | Agentic RAG pipeline (retrieve → grade → rewrite → generate) |
+
+**Security notes:** Refresh tokens are rotated on every use and stored SHA-256-hashed in `mcp_tokens`. Reuse of an already-rotated token nukes the entire chain for that user. MCP JWTs carry `type: 'mcp_access'` to prevent cross-use with web-app tokens.
+
+**Single-instance caveat:** Registered clients and pending auth state are stored in-memory — a second API instance would break the OAuth flow. Refresh tokens are DB-backed and survive restarts.
+
 ### Next.js web app
 - `app/page.tsx` — public landing page; Sign In links to `${NEXT_PUBLIC_API_URL}/auth/google`
 - `app/auth/callback/page.tsx` — receives `?token=` from API redirect, stores token, redirects to `/dashboard`
 - `app/dashboard/page.tsx` — fetches `/auth/me` with Bearer token; redirects to `/` if unauthenticated
 - `middleware.ts` — blocks `/dashboard` if `google_id_token` cookie is absent
+- `src/lib/server-status.tsx` — thin wrapper: exports `API_BASE` constant and `apiFetch` (plain `fetch` pass-through). The former wake overlay and `ServerStatusProvider` have been removed.
 
 ### Environment variables
 Single `.env` at the repo root, loaded by both apps. Key values:
@@ -112,7 +136,10 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback
 GOOGLE_MCP_CALLBACK_URL=http://localhost:3001/auth/google/mcp-callback  # MCP OAuth flow
+API_URL=http://localhost:3001  # Used by mcpAuthRouter (issuerUrl/baseUrl) and MCP WWW-Authenticate headers
 ```
+
+In production set `API_URL=https://api.inferr.xyz` and `GOOGLE_MCP_CALLBACK_URL=https://api.inferr.xyz/auth/google/mcp-callback`. Also add the production callback URL to Google Cloud Console → OAuth 2.0 Client → Authorized redirect URIs.
 
 ### Bruno API collection
 Requests live in `bruno/`. To manually trigger the scraper: **Run Scraper** (`POST /scraper/run`). The collection also includes RAG init/query requests and a health check.
