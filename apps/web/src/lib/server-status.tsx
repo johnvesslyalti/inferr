@@ -126,29 +126,26 @@ function WakeOverlay() {
     return () => clearInterval(id);
   }, []);
 
-  // Render free tier cold starts run ~30–60s. There's no real ETA from Render,
-  // so we ease a progress bar toward 95% over ~50s and show honest elapsed time
-  // instead of faking a countdown.
   const progress = Math.min(95, Math.round((elapsed / 50) * 95));
   const message =
     elapsed < 8
-      ? 'Waking up the server…'
+      ? 'Loading…'
       : elapsed < 25
-        ? 'Almost there — the server was asleep…'
-        : 'Hang tight — the first load in a while can take up to a minute…';
+        ? 'Almost there…'
+        : 'Just a moment more…';
 
   return (
     <div className={styles.overlay} role="status" aria-live="polite">
       <div className={styles.card}>
-        <div className={styles.spinner} />
+        <div className={styles.dots}>
+          <span className={styles.dot} />
+          <span className={styles.dot} />
+          <span className={styles.dot} />
+        </div>
         <p className={styles.message}>{message}</p>
         <div className={styles.barTrack}>
           <div className={styles.barFill} style={{ width: `${progress}%` }} />
         </div>
-        <p className={styles.elapsed}>{elapsed}s</p>
-        <p className={styles.note}>
-          The API runs on a free instance that sleeps when idle.
-        </p>
       </div>
     </div>
   );
