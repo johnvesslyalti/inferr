@@ -129,10 +129,10 @@ function WakeOverlay() {
   const progress = Math.min(95, Math.round((elapsed / 50) * 95));
   const message =
     elapsed < 8
-      ? 'Loading your feed…'
+      ? 'Loading…'
       : elapsed < 25
-        ? 'Fetching the latest articles…'
-        : 'Almost ready, just a moment more…';
+        ? 'Almost there…'
+        : 'Just a moment more…';
 
   return (
     <div className={styles.overlay} role="status" aria-live="polite">
