@@ -154,10 +154,6 @@ export class McpService implements OnModuleDestroy {
     return this.transports.has(sessionId);
   }
 
-  getUserIdForSession(sessionId: string): string | undefined {
-    return this.sessionUsers.get(sessionId);
-  }
-
   async onModuleDestroy() {
     for (const [sessionId, transport] of this.transports) {
       this.logger.log(`Closing MCP session on shutdown: ${sessionId}`);
