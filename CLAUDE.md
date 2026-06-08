@@ -111,6 +111,7 @@ OPENAI_API_KEY=           # Required for embeddings and RAG
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback
+GOOGLE_MCP_CALLBACK_URL=http://localhost:3001/auth/google/mcp-callback  # MCP OAuth flow
 ```
 
 ### Bruno API collection
