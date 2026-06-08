@@ -13,9 +13,14 @@ import { Strategy, StrategyOptions } from 'passport-google-oauth20';
 @Injectable()
 export class GoogleMcpStrategy extends PassportStrategy(Strategy, 'google-mcp') {
   constructor() {
+    const clientID = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    if (!clientID || !clientSecret) {
+      throw new Error('GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set');
+    }
     const options: StrategyOptions = {
-      clientID: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      clientID,
+      clientSecret,
       callbackURL:
         process.env.GOOGLE_MCP_CALLBACK_URL ||
         'http://localhost:3001/auth/google/mcp-callback',
