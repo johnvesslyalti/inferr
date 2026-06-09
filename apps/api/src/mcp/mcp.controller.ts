@@ -42,7 +42,10 @@ export class McpController {
           'WWW-Authenticate',
           `Bearer resource_metadata="${apiUrl}${RESOURCE_METADATA_PATH}"`,
         )
-        .json({ error: 'unauthorized', error_description: 'Missing bearer token' });
+        .json({
+          error: 'unauthorized',
+          error_description: 'Missing bearer token',
+        });
       return null;
     }
 
@@ -93,7 +96,8 @@ export class McpController {
           jsonrpc: '2.0',
           error: {
             code: -32000,
-            message: 'Bad request: send an initialize request without a session ID',
+            message:
+              'Bad request: send an initialize request without a session ID',
           },
           id: null,
         });

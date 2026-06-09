@@ -23,7 +23,7 @@ interface RemotiveJob {
 export interface TrendingRole {
   role: string;
   demand: number; // 1-5
-  trend: string;  // e.g. "Very High", "Growing Fast"
+  trend: string; // e.g. "Very High", "Growing Fast"
 }
 
 export interface MarketReport {
@@ -60,8 +60,14 @@ export class JobsService {
   async getMarketReport(): Promise<MarketReport> {
     const latest = await this.getLatestStoredReport();
 
-    if (latest && Date.now() - latest.generatedAt.getTime() < MARKET_REPORT_TTL_MS) {
-      return { roles: latest.roles, generatedAt: latest.generatedAt.toISOString() };
+    if (
+      latest &&
+      Date.now() - latest.generatedAt.getTime() < MARKET_REPORT_TTL_MS
+    ) {
+      return {
+        roles: latest.roles,
+        generatedAt: latest.generatedAt.toISOString(),
+      };
     }
 
     // Stale or missing → (re)generate. Coalesce concurrent callers onto one call.
@@ -77,7 +83,10 @@ export class JobsService {
       this.logger.error('Failed to generate market report', err);
       // Fall back to a stale row if we have one, rather than erroring the page.
       if (latest) {
-        return { roles: latest.roles, generatedAt: latest.generatedAt.toISOString() };
+        return {
+          roles: latest.roles,
+          generatedAt: latest.generatedAt.toISOString(),
+        };
       }
       return { roles: [], generatedAt: new Date().toISOString() };
     }
@@ -154,7 +163,10 @@ Rules:
     const response = await this.aiService.chat(prompt);
     // Strip any markdown fences GPT may add despite the prompt instruction.
     // Matches opening fence with any language tag (```json, ```javascript, etc.)
-    const clean = response.replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim();
+    const clean = response
+      .replace(/^```[^\n]*\n?/, '')
+      .replace(/\n?```$/, '')
+      .trim();
     const roles = JSON.parse(clean) as TrendingRole[];
 
     const [saved] = await this.db
@@ -224,7 +236,8 @@ Rules:
     for (const row of rows) {
       for (const tag of row.tags ?? []) {
         const normalised = tag.trim().toLowerCase();
-        if (normalised) skillMap.set(normalised, (skillMap.get(normalised) ?? 0) + 1);
+        if (normalised)
+          skillMap.set(normalised, (skillMap.get(normalised) ?? 0) + 1);
       }
     }
     const topSkills = [...skillMap.entries()]

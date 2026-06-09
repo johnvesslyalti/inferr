@@ -11,7 +11,10 @@ import { Strategy, StrategyOptions } from 'passport-google-oauth20';
  * disturbing the web-app login (which keeps using the `'google'` strategy).
  */
 @Injectable()
-export class GoogleMcpStrategy extends PassportStrategy(Strategy, 'google-mcp') {
+export class GoogleMcpStrategy extends PassportStrategy(
+  Strategy,
+  'google-mcp',
+) {
   constructor() {
     const clientID = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;

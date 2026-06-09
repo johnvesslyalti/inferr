@@ -7,10 +7,13 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID, randomBytes, createHash } from 'node:crypto';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, lt } from 'drizzle-orm';
 import type { Response } from 'express';
 
-import type { OAuthServerProvider, AuthorizationParams } from '@modelcontextprotocol/sdk/server/auth/provider.js';
+import type {
+  OAuthServerProvider,
+  AuthorizationParams,
+} from '@modelcontextprotocol/sdk/server/auth/provider.js';
 import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients.js';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import type {
@@ -21,7 +24,12 @@ import type {
 
 import { DRIZZLE } from '../db/drizzle.provider';
 import type { DrizzleDB } from '../db/drizzle.provider';
-import { mcpTokens } from '../db/schema';
+import {
+  mcpTokens,
+  mcpClients,
+  pendingMcpAuthorizations,
+  pendingAuthCodes,
+} from '../db/schema';
 
 // MCP access token lifetime — longer than the web app's 15m JWT since this is a
 // machine session (Claude Desktop), not a browser tab.
@@ -29,23 +37,6 @@ const ACCESS_TOKEN_TTL_SECONDS = 60 * 60; // 1 hour
 const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const PENDING_TTL_MS = 5 * 60 * 1000; // auth requests + codes expire in 5 minutes
 const CLEANUP_INTERVAL_MS = 60 * 1000;
-
-interface PendingAuthorization {
-  clientId: string;
-  codeChallenge: string;
-  redirectUri: string;
-  scopes: string[];
-  clientState?: string;
-  expiresAt: number;
-}
-
-interface PendingAuthCode {
-  userId: string;
-  clientId: string;
-  codeChallenge: string;
-  redirectUri: string;
-  expiresAt: number;
-}
 
 /**
  * Implements the MCP OAuth 2.1 authorization server for Inferr.
@@ -65,19 +56,6 @@ export class McpOAuthProvider
 {
   private readonly logger = new Logger(McpOAuthProvider.name);
 
-  // Registered MCP clients (Claude Desktop registers itself on each startup).
-  // TODO: persist to DB so clients survive API restarts without re-registering.
-  private readonly clients = new Map<string, OAuthClientInformationFull>();
-
-  // mcpState -> the authorization request we parked before redirecting to Google.
-  // TODO: move to Redis/DB before running multiple API instances — an auth flow
-  // started on instance A will fail if the Google callback lands on instance B.
-  private readonly pendingMcpAuthorizations = new Map<string, PendingAuthorization>();
-
-  // authCode -> the data needed to fulfil the PKCE token exchange.
-  // Same single-instance caveat as pendingMcpAuthorizations above.
-  private readonly pendingAuthCodes = new Map<string, PendingAuthCode>();
-
   private cleanupTimer?: NodeJS.Timeout;
 
   constructor(
@@ -86,7 +64,9 @@ export class McpOAuthProvider
   ) {}
 
   onModuleInit() {
-    this.cleanupTimer = setInterval(() => this.cleanupExpired(), CLEANUP_INTERVAL_MS);
+    this.cleanupTimer = setInterval(() => {
+      void this.cleanupExpired();
+    }, CLEANUP_INTERVAL_MS);
     // Don't keep the event loop alive solely for this timer.
     this.cleanupTimer.unref?.();
   }
@@ -95,13 +75,20 @@ export class McpOAuthProvider
     if (this.cleanupTimer) clearInterval(this.cleanupTimer);
   }
 
-  private cleanupExpired() {
-    const now = Date.now();
-    for (const [key, val] of this.pendingMcpAuthorizations) {
-      if (val.expiresAt < now) this.pendingMcpAuthorizations.delete(key);
-    }
-    for (const [key, val] of this.pendingAuthCodes) {
-      if (val.expiresAt < now) this.pendingAuthCodes.delete(key);
+  private async cleanupExpired() {
+    try {
+      const now = Date.now();
+      await this.db
+        .delete(pendingMcpAuthorizations)
+        .where(lt(pendingMcpAuthorizations.expiresAt, now));
+      await this.db
+        .delete(pendingAuthCodes)
+        .where(lt(pendingAuthCodes.expiresAt, now));
+    } catch (err) {
+      this.logger.error(
+        'Failed to clean up expired MCP authorization state',
+        err,
+      );
     }
   }
 
@@ -113,14 +100,26 @@ export class McpOAuthProvider
 
   get clientsStore(): OAuthRegisteredClientsStore {
     return {
-      getClient: (clientId: string) => this.clients.get(clientId),
-      registerClient: (
-        client: Omit<OAuthClientInformationFull, 'client_id' | 'client_id_issued_at'>,
+      getClient: async (clientId: string) => {
+        const rows = await this.db
+          .select()
+          .from(mcpClients)
+          .where(eq(mcpClients.clientId, clientId))
+          .limit(1);
+        if (rows.length === 0) return undefined;
+        return rows[0].clientInfo as OAuthClientInformationFull;
+      },
+      registerClient: async (
+        client: Omit<
+          OAuthClientInformationFull,
+          'client_id' | 'client_id_issued_at'
+        >,
       ) => {
-        // The SDK's registration handler already generated client_id/secret and
-        // attached them to this object before calling us — just persist + echo.
         const full = client as OAuthClientInformationFull;
-        this.clients.set(full.client_id, full);
+        await this.db.insert(mcpClients).values({
+          clientId: full.client_id,
+          clientInfo: full,
+        });
         this.logger.log(`Registered MCP client ${full.client_id}`);
         return full;
       },
@@ -129,13 +128,14 @@ export class McpOAuthProvider
 
   // --- Authorization flow ---
 
-  authorize(
+  async authorize(
     client: OAuthClientInformationFull,
     params: AuthorizationParams,
     res: Response,
   ): Promise<void> {
     const mcpState = randomUUID();
-    this.pendingMcpAuthorizations.set(mcpState, {
+    await this.db.insert(pendingMcpAuthorizations).values({
+      state: mcpState,
       clientId: client.client_id,
       codeChallenge: params.codeChallenge,
       redirectUri: params.redirectUri,
@@ -148,26 +148,35 @@ export class McpOAuthProvider
     // need mcpState; the client's own state is restored from our stored record.
     const googleState = Buffer.from(mcpState, 'utf8').toString('base64url');
     res.redirect(`/auth/google/mcp?state=${encodeURIComponent(googleState)}`);
-    return Promise.resolve();
   }
 
   /**
    * Called by AuthController after Google sign-in completes. Converts a parked
    * authorization request into a single-use auth code bound to the user.
    */
-  completeMcpAuthorization(
+  async completeMcpAuthorization(
     userId: string,
     googleState: string,
-  ): { redirectUri: string; authCode: string; clientState?: string } {
+  ): Promise<{ redirectUri: string; authCode: string; clientState?: string }> {
     const mcpState = Buffer.from(googleState, 'base64url').toString('utf8');
-    const pending = this.pendingMcpAuthorizations.get(mcpState);
-    if (!pending) {
+    const rows = await this.db
+      .select()
+      .from(pendingMcpAuthorizations)
+      .where(eq(pendingMcpAuthorizations.state, mcpState))
+      .limit(1);
+
+    const pending = rows[0];
+    if (!pending || pending.expiresAt < Date.now()) {
       throw new Error('Unknown or expired MCP authorization state');
     }
-    this.pendingMcpAuthorizations.delete(mcpState);
+
+    await this.db
+      .delete(pendingMcpAuthorizations)
+      .where(eq(pendingMcpAuthorizations.state, mcpState));
 
     const authCode = randomUUID();
-    this.pendingAuthCodes.set(authCode, {
+    await this.db.insert(pendingAuthCodes).values({
+      code: authCode,
       userId,
       clientId: pending.clientId,
       codeChallenge: pending.codeChallenge,
@@ -178,35 +187,50 @@ export class McpOAuthProvider
     return {
       redirectUri: pending.redirectUri,
       authCode,
-      clientState: pending.clientState,
+      clientState: pending.clientState ?? undefined,
     };
   }
 
-  challengeForAuthorizationCode(
+  async challengeForAuthorizationCode(
     _client: OAuthClientInformationFull,
     authorizationCode: string,
   ): Promise<string> {
-    const pending = this.pendingAuthCodes.get(authorizationCode);
+    const rows = await this.db
+      .select()
+      .from(pendingAuthCodes)
+      .where(eq(pendingAuthCodes.code, authorizationCode))
+      .limit(1);
+
+    const pending = rows[0];
     if (!pending || pending.expiresAt < Date.now()) {
-      return Promise.reject(new Error('Invalid or expired authorization code'));
+      throw new Error('Invalid or expired authorization code');
     }
     // The SDK verifies the PKCE code_verifier against this challenge for us.
-    return Promise.resolve(pending.codeChallenge);
+    return pending.codeChallenge;
   }
 
   async exchangeAuthorizationCode(
     client: OAuthClientInformationFull,
     authorizationCode: string,
   ): Promise<OAuthTokens> {
-    const pending = this.pendingAuthCodes.get(authorizationCode);
+    const rows = await this.db
+      .select()
+      .from(pendingAuthCodes)
+      .where(eq(pendingAuthCodes.code, authorizationCode))
+      .limit(1);
+
+    const pending = rows[0];
     if (!pending || pending.expiresAt < Date.now()) {
       throw new Error('Invalid or expired authorization code');
     }
     if (pending.clientId !== client.client_id) {
       throw new Error('Authorization code was issued to a different client');
     }
+
     // Single-use.
-    this.pendingAuthCodes.delete(authorizationCode);
+    await this.db
+      .delete(pendingAuthCodes)
+      .where(eq(pendingAuthCodes.code, authorizationCode));
 
     return this.issueTokens(pending.userId, client.client_id);
   }
@@ -232,7 +256,12 @@ export class McpOAuthProvider
       await this.db
         .update(mcpTokens)
         .set({ revoked: true, revokedAt: new Date() })
-        .where(and(eq(mcpTokens.userId, stored.userId), eq(mcpTokens.revoked, false)));
+        .where(
+          and(
+            eq(mcpTokens.userId, stored.userId),
+            eq(mcpTokens.revoked, false),
+          ),
+        );
       throw new Error('Refresh token already used — session revoked');
     }
     if (stored.expiresAt < new Date()) {
@@ -311,7 +340,10 @@ export class McpOAuthProvider
     );
   }
 
-  private async issueTokens(userId: string, clientId: string): Promise<OAuthTokens> {
+  private async issueTokens(
+    userId: string,
+    clientId: string,
+  ): Promise<OAuthTokens> {
     const refreshRaw = randomBytes(32).toString('hex');
     const refreshHash = this.hashToken(refreshRaw);
     const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);

@@ -123,7 +123,9 @@ export class ScraperService {
             .where(eq(articles.url, row.url)),
         ),
       );
-      this.logger.log(`Updated tags for ${existingWithTags.length} existing articles`);
+      this.logger.log(
+        `Updated tags for ${existingWithTags.length} existing articles`,
+      );
     }
 
     this.logger.log(
