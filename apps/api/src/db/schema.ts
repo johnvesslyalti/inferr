@@ -8,6 +8,7 @@ import {
   text,
   boolean,
   jsonb,
+  bigint,
 } from 'drizzle-orm/pg-core';
 
 const vector = (name: string, dimensions: number) =>
@@ -148,3 +149,41 @@ export type Job = typeof jobs.$inferSelect;
 export type NewJob = typeof jobs.$inferInsert;
 export type MarketReportRow = typeof marketReports.$inferSelect;
 export type NewMarketReportRow = typeof marketReports.$inferInsert;
+
+export const mcpClients = pgTable('mcp_clients', {
+  clientId: varchar('client_id', { length: 255 }).primaryKey(),
+  clientInfo: jsonb('client_info').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const pendingMcpAuthorizations = pgTable('pending_mcp_authorizations', {
+  state: varchar('state', { length: 255 }).primaryKey(),
+  clientId: varchar('client_id', { length: 255 }).notNull(),
+  codeChallenge: varchar('code_challenge', { length: 255 }).notNull(),
+  redirectUri: varchar('redirect_uri', { length: 2048 }).notNull(),
+  scopes: text('scopes').array().notNull().default([]),
+  clientState: varchar('client_state', { length: 2048 }),
+  expiresAt: bigint('expires_at', { mode: 'number' }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const pendingAuthCodes = pgTable('pending_auth_codes', {
+  code: varchar('code', { length: 255 }).primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  clientId: varchar('client_id', { length: 255 }).notNull(),
+  codeChallenge: varchar('code_challenge', { length: 255 }).notNull(),
+  redirectUri: varchar('redirect_uri', { length: 2048 }).notNull(),
+  expiresAt: bigint('expires_at', { mode: 'number' }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type McpClient = typeof mcpClients.$inferSelect;
+export type NewMcpClient = typeof mcpClients.$inferInsert;
+export type McpPendingAuthorization =
+  typeof pendingMcpAuthorizations.$inferSelect;
+export type NewMcpPendingAuthorization =
+  typeof pendingMcpAuthorizations.$inferInsert;
+export type McpPendingAuthCode = typeof pendingAuthCodes.$inferSelect;
+export type NewMcpPendingAuthCode = typeof pendingAuthCodes.$inferInsert;

@@ -15,7 +15,10 @@ import { AgenticRagService } from '../chat/agentic-rag.service';
 @Injectable()
 export class McpService implements OnModuleDestroy {
   private readonly logger = new Logger(McpService.name);
-  private readonly transports = new Map<string, StreamableHTTPServerTransport>();
+  private readonly transports = new Map<
+    string,
+    StreamableHTTPServerTransport
+  >();
   private readonly sessionUsers = new Map<string, string>();
 
   constructor(
@@ -37,7 +40,11 @@ export class McpService implements OnModuleDestroy {
     server.tool(
       'search_articles',
       'Semantically search the Inferr article database scraped from Hacker News and Dev.to. Use when the user asks about a specific technology, framework, or programming topic.',
-      { query: z.string().describe('Search query — a topic, question, or keywords') },
+      {
+        query: z
+          .string()
+          .describe('Search query — a topic, question, or keywords'),
+      },
       async ({ query }) => {
         const embedding = await this.aiService.embed(query);
         const embeddingStr = `[${embedding.join(',')}]`;
@@ -97,13 +104,18 @@ export class McpService implements OnModuleDestroy {
     server.tool(
       'ask_inferr',
       'Ask a technical question and get an answer grounded in the Inferr article knowledge base. Uses a full agentic RAG pipeline (retrieve → grade → rewrite → generate). Use when the user wants a detailed explanation or answer about a software development topic.',
-      { question: z.string().describe('A technical question for software developers') },
+      {
+        question: z
+          .string()
+          .describe('A technical question for software developers'),
+      },
       async ({ question }) => {
         const result = await this.agenticRag.query(userId, question, []);
 
         const sources =
           result.sources.length > 0
-            ? '\n\nSources:\n' + result.sources.map((s) => `- ${s.title}: ${s.url}`).join('\n')
+            ? '\n\nSources:\n' +
+              result.sources.map((s) => `- ${s.title}: ${s.url}`).join('\n')
             : '';
 
         return { content: [{ type: 'text', text: result.answer + sources }] };
@@ -122,7 +134,9 @@ export class McpService implements OnModuleDestroy {
    * a user-scoped MCP server. The caller (controller) then hands the HTTP
    * request to the returned transport.
    */
-  async createTransport(userId: string): Promise<StreamableHTTPServerTransport> {
+  async createTransport(
+    userId: string,
+  ): Promise<StreamableHTTPServerTransport> {
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: (sessionId) => {

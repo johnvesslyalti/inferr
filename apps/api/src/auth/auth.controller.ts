@@ -103,7 +103,10 @@ export class AuthController {
     });
 
     const { redirectUri, authCode, clientState } =
-      this.mcpOAuthProvider.completeMcpAuthorization(user.id, googleState);
+      await this.mcpOAuthProvider.completeMcpAuthorization(
+        user.id,
+        googleState,
+      );
 
     const url = new URL(redirectUri);
     url.searchParams.set('code', authCode);

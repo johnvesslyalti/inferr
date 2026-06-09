@@ -59,8 +59,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: 'TODO: trigger API rollout'
-        run: echo "Image ${{ steps.meta.outputs.tags }} pushed to GHCR. Add kubectl/fly/compose deploy step here to apply it to the running environment."
+      - name: Trigger Render Deploy Hook
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
+        run: |
+          echo "Triggering Render deployment via Deploy Hook..."
+          curl -s -f -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+
+      - name: Trigger Render API Rollout
+        if: ${{ secrets.RENDER_API_KEY != '' && secrets.RENDER_SERVICE_ID != '' }}
+        run: |
+          echo "Triggering Render deployment via API key..."
+          curl -s -f -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Accept: application/json" \
+            -H "Content-Type: application/json"
 
   # NOTE: The web frontend is deployed by the Vercel GitHub integration, not
   # this workflow. A previous `deploy-web` job ran `vercel pull/build/deploy`

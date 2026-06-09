@@ -1,0 +1,168 @@
+%-------------------------
+% AI Engineer Resume — Johnvessly Alti
+% Based on Jake's Resume Template (MIT License)
+% Compiler: XeLaTeX or pdfLaTeX
+%-------------------------
+
+\documentclass[letterpaper,10pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage{fontawesome5}
+\usepackage{multicol}
+\input{glyphtounicode}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\setlength{\footskip}{8pt}
+
+% Margins
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Section formatting
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+\pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{#1 \vspace{-2pt}}
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%
+
+\begin{document}
+
+%----------HEADER----------
+\begin{center}
+    {\Huge \scshape Johnvessly Alti} \\ \vspace{6pt}
+    \small
+    \faPhone\ +91 8074360216 \quad
+    \faEnvelope\ \href{mailto:altijohnvessly@gmail.com}{\underline{altijohnvessly@gmail.com}} \quad
+    \faGithub\ \href{https://github.com/johnvesslyalti}{\underline{github.com/johnvesslyalti}} \quad
+    \faLinkedin\ \href{https://linkedin.com/in/johnvesslyalti}{\underline{linkedin.com/in/johnvesslyalti}} \quad
+    \faGlobe\ \href{https://johnvesslyalti.xyz}{\underline{johnvesslyalti.xyz}} \quad
+    \faTwitter\ \href{https://x.com/zavxai}{\underline{@zavxai}}
+\end{center}
+
+\vspace{-6pt}
+
+%----------SUMMARY----------
+\section{Summary}
+\small{
+Full-stack AI engineer specialising in agentic LLM systems, RAG pipelines, and MCP server development.
+Built production systems featuring LangGraph multi-step RAG, pgvector HNSW semantic search, OAuth 2.1
+MCP authorization servers, fan-out feed architectures, and secure NestJS REST APIs. Focused on shipping
+reliable AI products beyond prototypes — from architecture to deployment.
+}
+
+\vspace{-2pt}
+
+%-----------SKILLS-----------
+\section{Technical Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{Languages}\hspace{2.5pt} Python, TypeScript, JavaScript, SQL \\[3pt]
+     \textbf{AI / ML}\hspace{2.5pt} OpenAI API, Anthropic API, LangChain, LangGraph, LlamaIndex, FAISS, Agentic AI, RAG Pipelines, pgvector, Vector Embeddings, Semantic Search, Prompt Engineering, MCP (Model Context Protocol) \\[3pt]
+     \textbf{Backend}\hspace{2.5pt} NestJS, Node.js, Express.js, Next.js (App Router, Server Actions), REST API Design, JWT Auth, OAuth 2.0/2.1, PKCE, Google OAuth, Refresh Token Rotation, Rate Limiting, Worker Threads \\[3pt]
+     \textbf{Databases \& Caching}\hspace{2.5pt} PostgreSQL, pgvector, Drizzle ORM, Prisma ORM, Redis, BullMQ, Neon, Supabase, ChromaDB \\[3pt]
+     \textbf{Tools \& Infrastructure}\hspace{2.5pt} Git, GitHub, Docker, GitHub Actions, Vercel, Render, Turborepo, release-please, k6 Load Testing \\[3pt]
+    }}
+ \end{itemize}
+
+\vspace{-4pt}
+
+%-----------PROJECTS-----------
+\section{Projects}
+    \resumeSubHeadingListStart
+
+      %--- inferr ---
+      \resumeProjectHeading
+          {\textbf{inferr} $|$ \emph{NestJS, Next.js 15, pgvector, LangGraph, OpenAI API, MCP SDK, OAuth 2.1} $|$ \href{https://github.com/johnvesslyalti/inferr}{\underline{GitHub}} $|$ \href{https://inferr.xyz}{\underline{Live}}}{}
+          \resumeItemListStart
+            \resumeItem{Built a full-stack AI developer feed with a \textbf{three-stage ingestion pipeline} (parallel HN Algolia + Dev.to fetch $\rightarrow$ Cheerio HTML extraction in batches of 5 $\rightarrow$ gpt-4o-mini summarisation + \texttt{text-embedding-3-small} embeddings) running daily via GitHub Actions with idempotent URL deduplication (\texttt{ON CONFLICT DO NOTHING}).}
+            \resumeItem{Designed an \textbf{agentic RAG chat using LangGraph} — four-node state machine (retrieve $\rightarrow$ grade $\rightarrow$ rewrite $\rightarrow$ generate) with multi-turn history and deliberate \texttt{searchQuery}/\texttt{originalQuestion} separation to prevent query contamination. Feed personalisation uses a \textbf{pgvector HNSW index} (1536-dim cosine) with tag-overlap bonus, 0.5 distance threshold, and 48 h recency filter — returning \texttt{hasMatches: false} fallback when no articles clear the threshold.}
+            \resumeItem{Exposed the backend as an \textbf{MCP server} over Streamable HTTP with a full \textbf{OAuth 2.1 + PKCE authorization server} (Google-delegated sign-in, SHA-256-hashed refresh tokens in \texttt{mcp\_tokens}, reuse detection that revokes the entire chain on replay). Web auth uses 15-min JWTs + 7-day HttpOnly refresh tokens with atomic rotation and depth-10 reuse detection. MCP JWTs carry \texttt{type: 'mcp\_access'} to prevent cross-use; three tools exposed: \texttt{search\_articles}, \texttt{get\_personalized\_feed}, \texttt{ask\_inferr}.}
+            \resumeItem{Built a \textbf{Tech Market} feature (daily Remotive job scraper, GPT-analysed demand trends, PostgreSQL-cached 24 h). Shipped as a Turborepo monorepo on Vercel + Render + Neon with GitHub Actions CI/CD and \textbf{release-please} automated semantic versioning.}
+          \resumeItemListEnd
+
+      %--- DevNest ---
+      \resumeProjectHeading
+          {\textbf{DevNest} $|$ \emph{NestJS, PostgreSQL, Redis, BullMQ, Prisma ORM, JWT, Google OAuth} $|$ \href{https://github.com/johnvesslyalti/dev-nest}{\underline{GitHub}}}{}
+          \resumeItemListStart
+            \resumeItem{Architected a Twitter-style social platform with a \textbf{fan-out on write} feed — BullMQ worker fans each post ID into followers' Redis ZSETs on creation; reads are O(log N) from Redis with a pull-model DB fallback for cold caches.}
+            \resumeItem{Implemented a JWT denylist (JTI in Redis) for immediate logout invalidation, bcrypt offloaded to a \textbf{Piscina worker thread pool} to avoid event-loop blocking, refresh token rotation with reuse detection, and device session limiting (max 5 concurrent, oldest auto-revoked).}
+            \resumeItem{Built a custom \textbf{Redis-backed rate limiter} using atomic Lua scripts (\texttt{INCR} + \texttt{EXPIRE}) to prevent distributed race conditions; load tested with k6 up to \textbf{5,000 concurrent users}.}
+          \resumeItemListEnd
+
+      %--- PG RAG Engine ---
+      \resumeProjectHeading
+          {\textbf{PG RAG Engine} $|$ \emph{Python, LlamaIndex, FAISS, OpenAI API, Prompt Engineering} $|$ \href{https://github.com/johnvesslyalti}{\underline{GitHub}}}{}
+          \resumeItemListStart
+            \resumeItem{Built a production-style RAG engine over Paul Graham's essay corpus — recursive chunking, FAISS + LlamaIndex semantic retrieval with tuned chunk sizes and OpenAI embeddings for grounding and context-window efficiency.}
+            \resumeItem{Implemented streaming responses via the OpenAI API; evaluated retrieval quality, prompt behaviour, and hallucination risk iteratively across configurations.}
+          \resumeItemListEnd
+
+    \resumeSubHeadingListEnd
+
+\vspace{-4pt}
+
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {B.Sc. in Computer Science}{Graduated 2024}
+      {Aditya Degree College}{Vizianagaram, India}
+  \resumeSubHeadingListEnd
+
+%-------------------------------------------
+\end{document}

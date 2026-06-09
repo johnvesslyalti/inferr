@@ -94,7 +94,9 @@ export class AiService {
             .set({ summary: `[Summary unavailable: ${article.title}]` })
             .where(eq(articles.id, article.id));
           failed++;
-          this.logger.warn(`Empty summary for article ${article.id} — writing placeholder to prevent re-queue`);
+          this.logger.warn(
+            `Empty summary for article ${article.id} — writing placeholder to prevent re-queue`,
+          );
           continue;
         }
 
