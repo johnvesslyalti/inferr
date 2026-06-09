@@ -128,7 +128,66 @@ const features = [
       </div>
     ),
   },
-]
+  {
+    title: 'Model Context Protocol',
+    desc: 'Connect your personalized developer news feed directly to Claude Desktop, Cursor, or Claude Code. Access search and AI summaries right inside your workspace.',
+    checks: [
+      'search_articles semantic search tool',
+      'get_personalized_feed user feed query',
+      'ask_inferr agentic RAG chat interface',
+      'PKCE OAuth 2.1 secure client auth',
+    ],
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h14v8H2z" />
+        <line x1="6" y1="2" x2="6" y2="8" />
+        <line x1="12" y1="2" x2="12" y2="8" />
+      </svg>
+    ),
+    visual: (
+      <div className={styles.mockMCP}>
+        <div className={styles.mockMCPHeader}>
+          <div className={styles.mockMCPDots}>
+            <div /><div /><div />
+          </div>
+          <span className={styles.mockMCPTitle}>Claude Desktop</span>
+        </div>
+        <div className={styles.mockMCPBody}>
+          <div className={styles.mockMCPToolCall}>
+            <div className={styles.mockMCPToolName}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                <polyline points="2 17 12 22 22 17" />
+                <polyline points="2 12 12 17 22 12" />
+              </svg>
+              <span>inferr.search_articles</span>
+            </div>
+            <div className={styles.mockMCPToolArgs}>
+              {"{"} query: <span className={styles.mockMCPOutputString}>&quot;TypeScript 5.5&quot;</span> {"}"}
+            </div>
+          </div>
+          <div className={styles.mockMCPOutput}>
+            <div>[</div>
+            <div style={{ paddingLeft: '1rem' }}>
+              {"{"}
+              <br />
+              <span style={{ paddingLeft: '1rem' }}>
+                <span className={styles.mockMCPOutputKey}>title:</span> <span className={styles.mockMCPOutputString}>&quot;TypeScript 5.5 inference upgrades&quot;</span>,
+              </span>
+              <br />
+              <span style={{ paddingLeft: '1rem' }}>
+                <span className={styles.mockMCPOutputKey}>matchScore:</span> <span className={styles.mockMCPOutputNum}>94%</span>
+              </span>
+              <br />
+              {"}"}
+            </div>
+            <div>]</div>
+          </div>
+        </div>
+      </div>
+    ),
+  },
+];
 
 const steps = [
   { n: '01', title: 'Sign in with Google', desc: 'One click. No password, no setup.' },

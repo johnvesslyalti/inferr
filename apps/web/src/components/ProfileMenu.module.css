@@ -12,19 +12,34 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.15s ease;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.trigger:hover { opacity: 0.85; }
+.trigger:hover {
+  transform: scale(1.05);
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.avatarContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 .avatar {
   border-radius: 50%;
   object-fit: cover;
+  border: 1.5px solid rgba(0, 201, 167, 0.3);
 }
 
 .skeleton {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
   display: block;
@@ -37,37 +52,54 @@
 }
 
 .initials {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #5b9dff, #8b6dff);
-  color: #fff;
-  font-size: 0.7rem;
+  background: linear-gradient(135deg, #00C9A7, #008f75);
+  color: #000;
+  font-size: 0.75rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-geist-mono, monospace);
+  font-family: var(--font-mono);
+  border: 1.5px solid rgba(0, 201, 167, 0.3);
+}
+
+.onlineDot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: var(--accent);
+  border: 2px solid var(--bg-primary);
+  box-shadow: 0 0 6px var(--accent);
 }
 
 /* ── dropdown ── */
 .dropdown {
   position: absolute;
   right: 0;
-  top: calc(100% + 10px);
-  width: 220px;
-  background: #0e1117;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  top: calc(100% + 12px);
+  width: 230px;
+  background: rgba(15, 15, 15, 0.9);
+  border: 1px solid rgba(0, 201, 167, 0.2);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(0, 201, 167, 0.05);
   z-index: 100;
   overflow: hidden;
-  animation: fadeIn 0.12s ease;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* ── user info header ── */
@@ -75,34 +107,42 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.875rem 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .dropAvatar {
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+  border: 1.5px solid rgba(0, 201, 167, 0.3);
 }
 
 .dropInitials {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #5b9dff, #8b6dff);
-  color: #fff;
-  font-size: 0.8rem;
+  background: linear-gradient(135deg, #00C9A7, #008f75);
+  color: #000;
+  font-size: 0.85rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-family: var(--font-geist-mono, monospace);
+  font-family: var(--font-mono);
+  border: 1.5px solid rgba(0, 201, 167, 0.3);
+}
+
+.userDetails {
+  flex: 1;
+  min-width: 0;
 }
 
 .userName {
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: #f3f5f8;
+  color: var(--text-primary);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -111,7 +151,7 @@
 
 .userEmail {
   font-size: 0.72rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0.1rem 0 0;
   white-space: nowrap;
   overflow: hidden;
@@ -121,7 +161,7 @@
 /* ── divider ── */
 .divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.05);
   margin: 0;
 }
 
@@ -129,58 +169,71 @@
 .item {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.6rem 1rem;
-  font-size: 0.84rem;
-  color: #9aa4b2;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.825rem;
+  color: var(--text-secondary);
   text-decoration: none;
-  transition: background 0.12s ease, color 0.12s ease;
+  transition: all 0.15s ease;
+  font-family: var(--font-body);
 }
 
 .item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #f3f5f8;
+  background: rgba(0, 201, 167, 0.05);
+  color: var(--accent-light);
 }
 
-/* When .item is a <button> (e.g. "Edit Interests" opening a dialog) */
+.itemIcon {
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
+}
+
+.item:hover .itemIcon {
+  opacity: 1;
+}
+
+/* When .item is a <button> */
 .itemButton {
   width: 100%;
   text-align: left;
   background: none;
   border: none;
   cursor: pointer;
-  font-family: inherit;
 }
 
 .itemActive {
-  color: #5b9dff;
+  color: var(--accent);
+  font-weight: 600;
+  background: rgba(0, 201, 167, 0.03);
 }
 
-.newBadge {
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #fff;
-  background: linear-gradient(135deg, #5b9dff, #8b6dff);
-  border-radius: 4px;
-  padding: 1px 5px;
-  text-transform: uppercase;
+.itemActive .itemIcon {
+  opacity: 1;
 }
 
 /* ── sign out ── */
 .signOut {
   width: 100%;
   text-align: left;
-  padding: 0.6rem 1rem;
-  font-size: 0.84rem;
-  color: #ef4444;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.825rem;
+  color: #f87171;
   background: none;
   border: none;
   cursor: pointer;
-  font-family: inherit;
-  transition: background 0.12s ease;
+  font-family: var(--font-body);
+  transition: all 0.15s ease;
 }
 
 .signOut:hover {
-  background: rgba(239, 68, 68, 0.08);
+  background: rgba(239, 68, 68, 0.06);
+  color: #ef4444;
+}
+
+.signOut .itemIcon {
+  color: currentColor;
 }

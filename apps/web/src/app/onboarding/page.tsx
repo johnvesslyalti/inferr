@@ -3,10 +3,40 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, useAuthFetch, API_BASE, SessionExpiredError } from '@/src/lib/auth-context';
-import { INTEREST_TAGS } from '@/src/lib/interests';
 import styles from './onboarding.module.css';
 
-const TAGS = INTEREST_TAGS;
+const CATEGORIES = [
+  {
+    name: 'Languages',
+    icon: '💻',
+    tags: ['TypeScript', 'JavaScript', 'Python', 'Go', 'Rust'],
+  },
+  {
+    name: 'Frameworks & Runtimes',
+    icon: '⚡',
+    tags: ['React', 'Next.js', 'Node.js', 'NestJS'],
+  },
+  {
+    name: 'Databases & Storage',
+    icon: '🗄️',
+    tags: ['PostgreSQL', 'Redis'],
+  },
+  {
+    name: 'AI / ML & Intelligent Systems',
+    icon: '🧠',
+    tags: ['AI / ML', 'LLMs', 'RAG'],
+  },
+  {
+    name: 'DevOps & Cloud Infrastructure',
+    icon: '☁️',
+    tags: ['Docker', 'Kubernetes', 'AWS', 'DevOps'],
+  },
+  {
+    name: 'Architecture & Security',
+    icon: '📐',
+    tags: ['System Design', 'Security'],
+  },
+];
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -24,7 +54,7 @@ export default function OnboardingPage() {
         if (data.tags?.length) setSelected(new Set(data.tags));
       })
       .catch((err) => { if (err instanceof SessionExpiredError) router.push('/'); });
-  }, [token, ready, router]);
+  }, [token, ready, router, authFetch]);
 
   const toggle = (tag: string) =>
     setSelected((prev) => {
@@ -52,25 +82,42 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} pageGlow`}>
       <div className={styles.card}>
         <div className={styles.header}>
-          <span className={styles.step}>01 / setup</span>
-          <h1 className={styles.title}>What&apos;s your tech stack?</h1>
+          <span className={styles.step}>Step 01 / Personalization</span>
+          <h1 className={styles.title}>What is your tech stack?</h1>
           <p className={styles.subtitle}>
-            Pick topics that matter to you — your feed will be ranked by relevance.
+            Select the topics you care about. We will rank your daily feed based on their relevance to these technologies.
           </p>
         </div>
 
-        <div className={styles.tags}>
-          {TAGS.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => toggle(tag)}
-              className={`${styles.chip} ${selected.has(tag) ? styles.chipSelected : ''}`}
-            >
-              {tag}
-            </button>
+        {/* Categorized interest tags selector */}
+        <div className={styles.categories}>
+          {CATEGORIES.map((cat) => (
+            <div key={cat.name} className={styles.categoryBlock}>
+              <h3 className={styles.categoryTitle}>
+                <span className={styles.categoryIcon}>{cat.icon}</span>
+                {cat.name}
+              </h3>
+              <div className={styles.tags}>
+                {cat.tags.map((tag) => {
+                  const isSelected = selected.has(tag);
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => toggle(tag)}
+                      className={`${styles.chip} ${isSelected ? styles.chipSelected : ''}`}
+                    >
+                      {isSelected && (
+                        <span className={styles.checkIcon}>✓</span>
+                      )}
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           ))}
         </div>
 
@@ -78,14 +125,14 @@ export default function OnboardingPage() {
 
         <div className={styles.footer}>
           <span className={styles.count}>
-            {selected.size} selected
+            <strong>{selected.size}</strong> topics selected
           </span>
           <button
             onClick={save}
             disabled={selected.size === 0 || saving}
             className={styles.cta}
           >
-            {saving ? 'Saving…' : 'Build my feed →'}
+            {saving ? 'Creating feed…' : 'Build my feed →'}
           </button>
         </div>
       </div>

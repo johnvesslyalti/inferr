@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth, useAuthFetch, API_BASE } from '@/src/lib/auth-context';
+import { Navbar } from '@/src/components/Navbar';
+import { InterestsDialog } from '@/src/components/InterestsDialog';
 import styles from './dashboard.module.css';
 
 interface UserProfile {
@@ -38,11 +40,12 @@ const features = [
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { token, ready, signOut } = useAuth();
+  const { token, ready } = useAuth();
   const authFetch = useAuthFetch();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showInterests, setShowInterests] = useState(false);
 
   useEffect(() => {
     if (!ready) return;
@@ -62,19 +65,14 @@ export default function DashboardPage() {
       }
     };
     fetchProfile();
-  }, [router, token, ready]);
-
-  const handleSignOut = async () => {
-    await signOut();
-    router.push('/');
-  };
+  }, [router, token, ready, authFetch]);
 
   if (loading) {
     return (
       <div className={`${styles.loadingScreen} pageGlow`}>
         <div className={styles.loadingInner}>
           <div className={styles.spinner} />
-          <p className={styles.loadingText}>authenticating</p>
+          <p className={styles.loadingText}>Authenticating account...</p>
         </div>
       </div>
     );
@@ -84,9 +82,12 @@ export default function DashboardPage() {
     return (
       <div className={`${styles.loadingScreen} pageGlow`}>
         <div className={styles.errorCard}>
-          <p className={styles.errorTitle}>access denied</p>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={styles.errorIcon}>
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <p className={styles.errorTitle}>Access Denied</p>
           <p className={styles.errorMsg}>{error}</p>
-          <p className={styles.errorRedirect}>redirecting...</p>
+          <p className={styles.errorRedirect}>Redirecting to home page...</p>
         </div>
       </div>
     );
@@ -98,65 +99,67 @@ export default function DashboardPage() {
 
   return (
     <div className={`${styles.container} pageGlow`}>
-      {/* Navbar */}
-      <nav className={`${styles.navbar} glassNav`}>
-        <div className={styles.navContent}>
-          <div className={styles.logo}>
-            <Image src="/logo.png" alt="Logo" width={24} height={24} style={{ borderRadius: '4px' }} />
-            <span className={styles.logoText}>inferr</span>
-          </div>
-          <button onClick={handleSignOut} className={styles.signOutBtn}>
-            sign out →
-          </button>
-        </div>
-      </nav>
+      {showInterests && (
+        <InterestsDialog onClose={() => setShowInterests(false)} />
+      )}
+
+      {/* Persistent floating glass navbar */}
+      <Navbar onEditInterests={() => setShowInterests(true)} />
 
       {/* Main */}
       <main className={styles.main}>
-
-        {/* Profile block */}
+        {/* Profile Card Section */}
         <section className={styles.profileSection}>
           <div className={styles.profileCard}>
-            <div className={styles.avatar}>
+            <div className={styles.profileBgGlow} />
+            <div className={styles.avatarWrapper}>
               {user.avatar ? (
-                <Image src={user.avatar} alt={user.name} className={styles.avatarImg} width={40} height={40} />
+                <Image
+                  src={user.avatar}
+                  alt={user.name}
+                  className={styles.avatarImg}
+                  width={56}
+                  height={56}
+                />
               ) : (
                 <span className={styles.avatarInitials}>{initials}</span>
               )}
               <span className={styles.onlineDot} />
             </div>
             <div className={styles.profileInfo}>
-              <div className={styles.profileBadge}>early access</div>
+              <div className={styles.badgeContainer}>
+                <span className={styles.profileBadge}>Early Access Support</span>
+              </div>
               <h1 className={styles.profileName}>{user.name}</h1>
               <p className={styles.profileEmail}>{user.email}</p>
             </div>
           </div>
         </section>
 
-        {/* Status block */}
+        {/* Status log Terminal card */}
         <section className={styles.statusSection}>
           <div className={styles.terminalCard}>
             <div className={styles.terminalHeader}>
               <div className={styles.terminalDots}>
                 <div /><div /><div />
               </div>
-              <span className={styles.terminalTitle}>status.log</span>
+              <span className={styles.terminalTitle}>status.sh</span>
             </div>
             <div className={styles.terminalBody}>
               <p className={styles.terminalLine}>
                 <span className={styles.prompt}>$</span>
-                <span className={styles.cmd}>status --user {user.name.split(' ')[0].toLowerCase()}</span>
+                <span className={styles.cmd}>inferr --info --user {user.name.split(' ')[0].toLowerCase()}</span>
               </p>
               <p className={styles.terminalOutput}>
-                ✓ &nbsp;account confirmed · early access granted
+                <span className={styles.outputCheck}>[OK]</span> Account verified successfully · Early access tier
               </p>
               <p className={styles.terminalOutput}>
-                ✓ &nbsp;workspace queued · building your feed now
+                <span className={styles.outputCheck}>[OK]</span> Personalized query vector generated
               </p>
               <p className={styles.terminalOutput}>
-                ✓ &nbsp;you&apos;ll be notified when it&apos;s ready
+                <span className={styles.outputCheck}>[OK]</span> Daily indexing queues active
               </p>
-              <p className={styles.terminalCursor}>
+              <p className={styles.terminalLine}>
                 <span className={styles.prompt}>$</span>
                 <span className="cursor" />
               </p>
@@ -164,9 +167,9 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Features */}
+        {/* Features list */}
         <section className={styles.featuresSection}>
-          <p className={styles.sectionLabel}>{`// what's coming`}</p>
+          <p className={styles.sectionLabel}>{`// Features Overview`}</p>
           <div className={styles.featuresGrid}>
             {features.map((f) => (
               <div key={f.label} className={styles.featureCard}>
@@ -178,20 +181,23 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Follow */}
+        {/* Follow zavxai on X */}
         <section className={styles.followSection}>
           <p className={styles.followText}>
-            follow the build →&nbsp;
-            <a href="https://x.com" target="_blank" rel="noopener noreferrer">@zavxai on X</a>
+            Follow the project build →&nbsp;
+            <a href="https://x.com/zavxai" target="_blank" rel="noopener noreferrer" className={styles.followLink}>
+              @zavxai on X
+            </a>
           </p>
         </section>
-
       </main>
 
       <footer className={styles.footer}>
         <div className={styles.footerContent}>
-          built by @zavxai · one engineer · $7/month ·{' '}
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer">github</a>
+          Built with care · One developer · $7/month stack ·{' '}
+          <a href="https://github.com/johnvesslyalti/ai-developer-feed" target="_blank" rel="noopener noreferrer">
+            GitHub Repository
+          </a>
         </div>
       </footer>
     </div>

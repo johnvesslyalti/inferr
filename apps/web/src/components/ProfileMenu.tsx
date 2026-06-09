@@ -3,14 +3,9 @@
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/src/lib/auth-context';
 import styles from './ProfileMenu.module.css';
-
-const NAV_ITEMS = [
-  { href: '/feed',       label: 'Feed' },
-  { href: '/chat',       label: 'Chat' },
-  { href: '/market',     label: 'Tech Market', isNew: true },
-];
 
 interface ProfileMenuProps {
   // When provided, "Edit Interests" opens this handler (e.g. an in-place dialog)
@@ -57,15 +52,21 @@ export function ProfileMenu({ onEditInterests }: ProfileMenuProps = {}) {
         {!user ? (
           <span className={styles.skeleton} />
         ) : user.avatar ? (
-          <Image
-            src={user.avatar}
-            alt={user.name}
-            width={30}
-            height={30}
-            className={styles.avatar}
-          />
+          <div className={styles.avatarContainer}>
+            <Image
+              src={user.avatar}
+              alt={user.name}
+              width={32}
+              height={32}
+              className={styles.avatar}
+            />
+            <span className={styles.onlineDot} />
+          </div>
         ) : (
-          <span className={styles.initials}>{initials}</span>
+          <div className={styles.avatarContainer}>
+            <span className={styles.initials}>{initials}</span>
+            <span className={styles.onlineDot} />
+          </div>
         )}
       </button>
 
@@ -74,11 +75,11 @@ export function ProfileMenu({ onEditInterests }: ProfileMenuProps = {}) {
           {/* User info header */}
           <div className={styles.userInfo}>
             {user?.avatar ? (
-              <Image src={user.avatar} alt={user.name} width={36} height={36} className={styles.dropAvatar} />
+              <Image src={user.avatar} alt={user.name} width={40} height={40} className={styles.dropAvatar} />
             ) : (
               <span className={styles.dropInitials}>{initials}</span>
             )}
-            <div>
+            <div className={styles.userDetails}>
               <p className={styles.userName}>{user?.name ?? '—'}</p>
               <p className={styles.userEmail}>{user?.email ?? '—'}</p>
             </div>
@@ -86,41 +87,53 @@ export function ProfileMenu({ onEditInterests }: ProfileMenuProps = {}) {
 
           <div className={styles.divider} />
 
-          {/* Nav links */}
-          {NAV_ITEMS.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className={`${styles.item} ${pathname === item.href ? styles.itemActive : ''}`}
-              onClick={() => setOpen(false)}
-            >
-              {item.label}
-              {item.isNew && <span className={styles.newBadge}>new</span>}
-            </a>
-          ))}
+          {/* Nav links specific to account */}
+          <Link
+            href="/dashboard"
+            className={`${styles.item} ${pathname === '/dashboard' ? styles.itemActive : ''}`}
+            onClick={() => setOpen(false)}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.itemIcon}>
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <line x1="9" y1="3" x2="9" y2="21"/>
+            </svg>
+            Account & Status
+          </Link>
 
-          {/* Edit Interests: open the in-place dialog when a handler is given,
-              otherwise fall back to the onboarding page. */}
+          {/* Edit Interests */}
           {onEditInterests ? (
             <button
               className={`${styles.item} ${styles.itemButton}`}
               onClick={() => { setOpen(false); onEditInterests(); }}
             >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.itemIcon}>
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
               Edit Interests
             </button>
           ) : (
-            <a
+            <Link
               href="/onboarding"
               className={`${styles.item} ${pathname === '/onboarding' ? styles.itemActive : ''}`}
               onClick={() => setOpen(false)}
             >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.itemIcon}>
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
               Edit Interests
-            </a>
+            </Link>
           )}
 
           <div className={styles.divider} />
 
           <button className={styles.signOut} onClick={handleSignOut}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.itemIcon}>
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
             Sign out
           </button>
         </div>

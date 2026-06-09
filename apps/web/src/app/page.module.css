@@ -652,6 +652,103 @@
   flex-shrink: 0;
 }
 
+.mockMCP {
+  width: 100%;
+  max-width: 380px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+}
+
+.mockMCPHeader {
+  padding: 0.6rem 1rem;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mockMCPDots {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.mockMCPDots div {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.mockMCPDots div:nth-child(1) { background-color: #ff5f57; }
+.mockMCPDots div:nth-child(2) { background-color: #ffbd2e; }
+.mockMCPDots div:nth-child(3) { background-color: #28c840; }
+
+.mockMCPTitle {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.mockMCPBody {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.mockMCPToolCall {
+  background-color: rgba(0, 201, 167, 0.04);
+  border: 1px dashed rgba(0, 201, 167, 0.25);
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.mockMCPToolName {
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.mockMCPToolArgs {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.mockMCPOutput {
+  background-color: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow-x: auto;
+}
+
+.mockMCPOutputKey {
+  color: #c792ea;
+}
+
+.mockMCPOutputString {
+  color: #c3e88d;
+}
+
+.mockMCPOutputNum {
+  color: #f78c6c;
+}
+
+
 /* ===== HOW IT WORKS ===== */
 .howHeader {
   margin: 3rem 0 1.5rem;

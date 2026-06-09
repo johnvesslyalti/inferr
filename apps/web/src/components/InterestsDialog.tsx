@@ -2,10 +2,40 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, useAuthFetch, API_BASE, SessionExpiredError } from '@/src/lib/auth-context';
-import { INTEREST_TAGS } from '@/src/lib/interests';
 import styles from './InterestsDialog.module.css';
 
-const TAGS = INTEREST_TAGS;
+const CATEGORIES = [
+  {
+    name: 'Languages',
+    icon: '💻',
+    tags: ['TypeScript', 'JavaScript', 'Python', 'Go', 'Rust'],
+  },
+  {
+    name: 'Frameworks & Runtimes',
+    icon: '⚡',
+    tags: ['React', 'Next.js', 'Node.js', 'NestJS'],
+  },
+  {
+    name: 'Databases & Storage',
+    icon: '🗄️',
+    tags: ['PostgreSQL', 'Redis'],
+  },
+  {
+    name: 'AI / ML & Intelligent Systems',
+    icon: '🧠',
+    tags: ['AI / ML', 'LLMs', 'RAG'],
+  },
+  {
+    name: 'DevOps & Cloud Infrastructure',
+    icon: '☁️',
+    tags: ['Docker', 'Kubernetes', 'AWS', 'DevOps'],
+  },
+  {
+    name: 'Architecture & Security',
+    icon: '📐',
+    tags: ['System Design', 'Security'],
+  },
+];
 
 interface Props {
   onClose: () => void;
@@ -78,22 +108,40 @@ export function InterestsDialog({ onClose, onSaved }: Props) {
           <button className={styles.closeBtn} onClick={onClose} aria-label="Close">✕</button>
         </div>
 
-        <div className={styles.tags}>
-          {TAGS.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => toggle(tag)}
-              className={`${styles.chip} ${selected.has(tag) ? styles.chipSelected : ''}`}
-            >
-              {tag}
-            </button>
+        <div className={styles.categoriesContainer}>
+          {CATEGORIES.map((cat) => (
+            <div key={cat.name} className={styles.categoryBlock}>
+              <h3 className={styles.categoryTitle}>
+                <span className={styles.categoryIcon}>{cat.icon}</span>
+                {cat.name}
+              </h3>
+              <div className={styles.tags}>
+                {cat.tags.map((tag) => {
+                  const isSelected = selected.has(tag);
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => toggle(tag)}
+                      className={`${styles.chip} ${isSelected ? styles.chipSelected : ''}`}
+                    >
+                      {isSelected && (
+                        <span className={styles.checkIcon}>✓</span>
+                      )}
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           ))}
         </div>
 
         {error && <p className={styles.error}>{error}</p>}
 
         <div className={styles.footer}>
-          <span className={styles.count}>{selected.size} selected</span>
+          <span className={styles.count}>
+            <strong>{selected.size}</strong> topics selected
+          </span>
           <div className={styles.actions}>
             <button onClick={onClose} className={styles.cancelBtn}>Cancel</button>
             <button
