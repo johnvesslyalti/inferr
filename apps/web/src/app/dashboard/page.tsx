@@ -192,14 +192,6 @@ export default function DashboardPage() {
         </section>
       </main>
 
-      <footer className={styles.footer}>
-        <div className={styles.footerContent}>
-          Built with care · One developer · $7/month stack ·{' '}
-          <a href="https://github.com/johnvesslyalti/ai-developer-feed" target="_blank" rel="noopener noreferrer">
-            GitHub Repository
-          </a>
-        </div>
-      </footer>
     </div>
   );
 }
