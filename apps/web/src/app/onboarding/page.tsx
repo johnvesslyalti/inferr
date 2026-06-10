@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, useAuthFetch, API_BASE, SessionExpiredError } from '@/src/lib/auth-context';
+import { getCanonicalTags } from '@/src/lib/interests';
 import styles from './onboarding.module.css';
 
 const CATEGORIES = [
@@ -51,7 +52,9 @@ export default function OnboardingPage() {
     authFetch(`${API_BASE}/users/interests`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.tags?.length) setSelected(new Set(data.tags));
+        if (data.tags?.length) {
+          setSelected(new Set(getCanonicalTags(data.tags)));
+        }
       })
       .catch((err) => { if (err instanceof SessionExpiredError) router.push('/'); });
   }, [token, ready, router, authFetch]);

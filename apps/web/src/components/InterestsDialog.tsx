@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, useAuthFetch, API_BASE, SessionExpiredError } from '@/src/lib/auth-context';
+import { getCanonicalTags } from '@/src/lib/interests';
 import styles from './InterestsDialog.module.css';
 
 const CATEGORIES = [
@@ -55,7 +56,11 @@ export function InterestsDialog({ onClose, onSaved }: Props) {
     if (!token) return;
     authFetch(`${API_BASE}/users/interests`)
       .then((r) => r.json())
-      .then((data) => { if (data.tags?.length) setSelected(new Set(data.tags)); })
+      .then((data) => {
+        if (data.tags?.length) {
+          setSelected(new Set(getCanonicalTags(data.tags)));
+        }
+      })
       .catch((err) => { if (err instanceof SessionExpiredError) onClose(); });
   }, [token, onClose, authFetch]);
 
