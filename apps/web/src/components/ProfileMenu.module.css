@@ -237,3 +237,32 @@
 .signOut .itemIcon {
   color: currentColor;
 }
+
+.mobileOnly {
+  display: none;
+  flex-direction: column;
+}
+
+.newBadge {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  border-radius: 4px;
+  padding: 0px 4px;
+  line-height: 1.4;
+  text-transform: uppercase;
+  margin-left: auto;
+}
+
+.itemActive .newBadge {
+  background: #000;
+  color: var(--accent);
+}
+
+@media (max-width: 600px) {
+  .mobileOnly {
+    display: flex;
+  }
+}

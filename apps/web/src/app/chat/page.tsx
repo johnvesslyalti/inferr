@@ -126,16 +126,6 @@ export default function ChatPage() {
         <div className={styles.history}>
           {messages.length === 0 && (
             <div className={styles.empty}>
-              <div className={styles.emptyHeader}>
-                <div className={styles.sparkleIcon}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                  </svg>
-                </div>
-                <h1 className={styles.emptyTitle}>Ask inferr AI</h1>
-                <p className={styles.emptySubtitle}>Query and search across your daily developer feed using semantic RAG</p>
-              </div>
-
               {/* Suggestions Grid */}
               <div className={styles.suggestionsGrid}>
                 {SUGGESTIONS.map((s, idx) => (

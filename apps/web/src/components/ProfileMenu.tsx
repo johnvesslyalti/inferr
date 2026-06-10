@@ -87,6 +87,47 @@ export function ProfileMenu({ onEditInterests }: ProfileMenuProps = {}) {
 
           <div className={styles.divider} />
 
+          {/* Mobile navigation items */}
+          <div className={styles.mobileOnly}>
+            <Link
+              href="/feed"
+              className={`${styles.item} ${pathname === '/feed' ? styles.itemActive : ''}`}
+              onClick={() => setOpen(false)}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.itemIcon}>
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <path d="M16 8h2"/>
+                <path d="M16 12h2"/>
+                <path d="M16 16h2"/>
+                <path d="M6 8h6v8H6z"/>
+              </svg>
+              Feed
+            </Link>
+            <Link
+              href="/chat"
+              className={`${styles.item} ${pathname === '/chat' ? styles.itemActive : ''}`}
+              onClick={() => setOpen(false)}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.itemIcon}>
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              Chat
+            </Link>
+            <Link
+              href="/market"
+              className={`${styles.item} ${pathname === '/market' ? styles.itemActive : ''}`}
+              onClick={() => setOpen(false)}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.itemIcon}>
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                <polyline points="17 6 23 6 23 12"/>
+              </svg>
+              Tech Market
+              <span className={styles.newBadge}>new</span>
+            </Link>
+            <div className={styles.divider} />
+          </div>
+
           {/* Nav links specific to account */}
           <Link
             href="/dashboard"

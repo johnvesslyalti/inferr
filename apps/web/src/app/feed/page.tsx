@@ -154,6 +154,7 @@ export default function FeedPage() {
 
     const safe = cached && !hadOversizedCache ? normalizeFeedResponse(cached) : null;
     if (safe && (safe.articles.length > 0 || safe.fallback.length > 0)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFeed(safe);
       hasCacheRef.current = true;
       setLoading(false);
@@ -197,6 +198,7 @@ export default function FeedPage() {
     }
 
     const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     revalidate(controller.signal);
     return () => controller.abort();
   }, [revalidate, router, token, ready, refetchKey]);

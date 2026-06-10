@@ -109,17 +109,7 @@
   .navInner {
     padding: 0 1rem;
   }
-  
-  .logoText {
-    display: none; /* Hide brand name on small screens */
-  }
-
   .navLinks {
-    gap: 0.25rem;
-  }
-
-  .navLink {
-    font-size: 0.775rem;
-    padding: 0.35rem 0.75rem;
+    display: none;
   }
 }

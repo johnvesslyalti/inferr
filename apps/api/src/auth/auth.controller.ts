@@ -118,10 +118,15 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getProfile(@Req() req: Request) {
-    const user = req.user as
+    const jwtUser = req.user as
       | { id: string; email: string; name: string }
       | undefined;
 
+    if (!jwtUser) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const user = await this.usersService.findById(jwtUser.id);
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
@@ -132,6 +137,7 @@ export class AuthController {
       id: user.id,
       email: user.email,
       name: user.name,
+      avatar: user.avatar,
       hasInterests,
     };
   }
