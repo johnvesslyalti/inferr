@@ -203,9 +203,11 @@
 }
 
 .itemActive {
-  color: var(--accent);
+  color: var(--accent-light);
   font-weight: 600;
-  background: rgba(0, 201, 167, 0.03);
+  background: linear-gradient(90deg, rgba(0, 201, 167, 0.08) 0%, rgba(0, 201, 167, 0.02) 100%);
+  border-left: 2px solid var(--accent);
+  padding-left: calc(1rem - 2px);
 }
 
 .itemActive .itemIcon {

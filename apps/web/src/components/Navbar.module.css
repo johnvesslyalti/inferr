@@ -64,6 +64,7 @@
   font-family: var(--font-body);
   padding: 0.4rem 0.95rem;
   border-radius: 99px;
+  border: 1px solid transparent;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
@@ -76,10 +77,15 @@
 }
 
 .navLink.active {
-  color: #000;
-  background: var(--accent);
+  color: var(--accent-light);
+  background: linear-gradient(135deg, rgba(0, 201, 167, 0.15), rgba(0, 201, 167, 0.04));
+  border: 1px solid rgba(0, 201, 167, 0.35);
   font-weight: 600;
-  box-shadow: 0 2px 10px rgba(0, 201, 167, 0.3);
+  box-shadow: 
+    0 4px 15px rgba(0, 201, 167, 0.15),
+    inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .newBadge {
@@ -92,11 +98,6 @@
   padding: 0px 4px;
   line-height: 1.4;
   text-transform: uppercase;
-}
-
-.navLink.active .newBadge {
-  background: #000;
-  color: var(--accent);
 }
 
 .navRight {
