@@ -17,6 +17,7 @@ jobs:
   deploy-api:
     name: Build & push API image
     runs-on: ubuntu-latest
+    # Only deploy when ALL CI jobs (lint, test-unit, test-e2e, build, docker-build) pass.
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
