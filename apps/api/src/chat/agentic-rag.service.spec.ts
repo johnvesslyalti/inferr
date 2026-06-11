@@ -13,16 +13,23 @@ jest.mock('@langchain/langgraph', () => ({
   END: 'END',
   Annotation: { Root: (s: any) => s },
 }));
-jest.mock('@langchain/openai', () => ({
-  ChatOpenAI: class {
-    constructor(_opts?: any) {}
-    withStructuredOutput(_s: any) { return this; }
-  },
-}));
+jest.mock('@langchain/openai', () => {
+  const invokeMock = jest.fn();
+  const instance = {
+    invoke: invokeMock,
+    withStructuredOutput: jest.fn(function (_s: any) {
+      return this;
+    }),
+  };
+  return {
+    ChatOpenAI: jest.fn().mockImplementation((_opts?: any) => instance),
+    __esModule: true,
+  };
+});
 
 describe('AgenticRagService + ChatService (unit)', () => {
   let agentic: AgenticRagService;
-  let chatService: any;
+  let _chatService: any;
   let aiService: jest.Mocked<AiService>;
   let mockDb: any;
   let mockEvaluations: jest.Mocked<EvaluationsService>;
@@ -69,10 +76,20 @@ describe('AgenticRagService + ChatService (unit)', () => {
     };
 
     // Stable mock objects for getters (defineProperty because they are read-only getters in the class)
-    (agentic as any)._llmMock = { invoke: jest.fn().mockResolvedValue({ content: 'stub answer' }) };
-    (agentic as any)._gradingLlmMock = { invoke: jest.fn().mockResolvedValue({ relevant_doc_indices: [] }) };
-    Object.defineProperty(agentic, 'llm', { get: () => (agentic as any)._llmMock, configurable: true });
-    Object.defineProperty(agentic, 'gradingLlm', { get: () => (agentic as any)._gradingLlmMock, configurable: true });
+    (agentic as any)._llmMock = {
+      invoke: jest.fn().mockResolvedValue({ content: 'stub answer' }),
+    };
+    (agentic as any)._gradingLlmMock = {
+      invoke: jest.fn().mockResolvedValue({ relevant_doc_indices: [] }),
+    };
+    Object.defineProperty(agentic, 'llm', {
+      get: () => (agentic as any)._llmMock,
+      configurable: true,
+    });
+    Object.defineProperty(agentic, 'gradingLlm', {
+      get: () => (agentic as any)._gradingLlmMock,
+      configurable: true,
+    });
   });
 
   it('ChatService delegates to AgenticRagService.query', async () => {
@@ -90,7 +107,9 @@ describe('AgenticRagService + ChatService (unit)', () => {
 
     expect(res).toEqual({
       answer: 'This is the generated answer based on context.',
-      sources: [{ title: 'Relevant Article', url: 'https://ex.com/a', source: 'hn' }],
+      sources: [
+        { title: 'Relevant Article', url: 'https://ex.com/a', source: 'hn' },
+      ],
     });
   });
 
@@ -98,12 +117,28 @@ describe('AgenticRagService + ChatService (unit)', () => {
     aiService.embed.mockResolvedValue([0.01, 0.02]);
     mockDb.execute.mockResolvedValueOnce({
       rows: [
-        { id: 'doc1', title: 'RAG 101', url: 'r1', source: 'devto', summary: 'Intro' },
-        { id: 'doc2', title: 'Advanced', url: 'r2', source: 'hn', summary: null },
+        {
+          id: 'doc1',
+          title: 'RAG 101',
+          url: 'r1',
+          source: 'devto',
+          summary: 'Intro',
+        },
+        {
+          id: 'doc2',
+          title: 'Advanced',
+          url: 'r2',
+          source: 'hn',
+          summary: null,
+        },
       ],
     });
 
-    const state = { searchQuery: 'rag tutorial', originalQuestion: 'q', iterations: 0 } as any;
+    const state = {
+      searchQuery: 'rag tutorial',
+      originalQuestion: 'q',
+      iterations: 0,
+    } as any;
     const out = await (agentic as any).retrieveNode(state);
 
     expect(aiService.embed).toHaveBeenCalledWith('rag tutorial');
@@ -132,27 +167,50 @@ describe('AgenticRagService + ChatService (unit)', () => {
     expect(out.relevantDocuments.map((d: any) => d.id)).toEqual(['d0', 'd2']);
 
     // Error fallback path
-    (agentic as any)._gradingLlmMock.invoke.mockRejectedValueOnce(new Error('llm down'));
-    const out2 = await (agentic as any).gradeDocumentsNode({ documents: docs } as any);
+    (agentic as any)._gradingLlmMock.invoke.mockRejectedValueOnce(
+      new Error('llm down'),
+    );
+    const out2 = await (agentic as any).gradeDocumentsNode({
+      documents: docs,
+    } as any);
     expect(out2.relevantDocuments).toHaveLength(3); // falls back to all
   });
 
   it('routeAfterGrading chooses generate when relevant docs present, else rewrite if under max iters', () => {
-    const hasRelevant = (agentic as any).routeAfterGrading({ relevantDocuments: [{}], iterations: 0 });
+    const hasRelevant = (agentic as any).routeAfterGrading({
+      relevantDocuments: [{}],
+      iterations: 0,
+    });
     expect(hasRelevant).toBe('generate');
 
-    const needsRewrite = (agentic as any).routeAfterGrading({ relevantDocuments: [], iterations: 0 });
+    const needsRewrite = (agentic as any).routeAfterGrading({
+      relevantDocuments: [],
+      iterations: 0,
+    });
     expect(needsRewrite).toBe('rewrite');
 
-    const giveUp = (agentic as any).routeAfterGrading({ relevantDocuments: [], iterations: 2 });
+    const giveUp = (agentic as any).routeAfterGrading({
+      relevantDocuments: [],
+      iterations: 2,
+    });
     expect(giveUp).toBe('generate');
   });
 
   it('generateNode builds context from relevant (or all) docs and returns answer + sources', async () => {
     // The graph stub already covers high level; here we can test the node in isolation by stubbing llm via the stable ref
-    (agentic as any)._llmMock.invoke.mockResolvedValueOnce({ content: 'Concise technical answer here.' });
+    (agentic as any)._llmMock.invoke.mockResolvedValueOnce({
+      content: 'Concise technical answer here.',
+    });
 
-    const relevant = [{ id: 'r1', title: 'The One', url: 'u1', source: 'hn', summary: 'Key fact X.' }];
+    const relevant = [
+      {
+        id: 'r1',
+        title: 'The One',
+        url: 'u1',
+        source: 'hn',
+        summary: 'Key fact X.',
+      },
+    ];
     const state = {
       relevantDocuments: relevant,
       documents: [],
@@ -163,7 +221,9 @@ describe('AgenticRagService + ChatService (unit)', () => {
     const out = await (agentic as any).generateNode(state);
 
     expect(out.answer).toBe('Concise technical answer here.');
-    expect(out.sources).toEqual([{ title: 'The One', url: 'u1', source: 'hn' }]);
+    expect(out.sources).toEqual([
+      { title: 'The One', url: 'u1', source: 'hn' },
+    ]);
   });
 
   // ---------------------------------------------------------------------------
@@ -193,7 +253,8 @@ describe('AgenticRagService + ChatService (unit)', () => {
       ],
     }).compile();
 
-    const agenticNoEval = moduleNoEval.get<AgenticRagService>(AgenticRagService);
+    const agenticNoEval =
+      moduleNoEval.get<AgenticRagService>(AgenticRagService);
 
     // Set up same graph stub
     (agenticNoEval as any)._graph = {

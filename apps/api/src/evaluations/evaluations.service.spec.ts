@@ -34,13 +34,15 @@ describe('EvaluationsService (unit)', () => {
 
   const baseInput = {
     question: 'What is RAG?',
-    answer: 'RAG stands for Retrieval-Augmented Generation, combining a retriever with an LLM.',
+    answer:
+      'RAG stands for Retrieval-Augmented Generation, combining a retriever with an LLM.',
     context: [
       {
         title: 'RAG Explained',
         url: 'https://ex.com/rag',
         source: 'devto',
-        summary: 'RAG is a technique that augments LLMs with external knowledge retrieval.',
+        summary:
+          'RAG is a technique that augments LLMs with external knowledge retrieval.',
       },
     ],
     userId: 'u-test-001',
@@ -87,7 +89,9 @@ describe('EvaluationsService (unit)', () => {
     expect(result!.scores.context_recall).toBeCloseTo(0.9);
     expect(result!.evaluatedAt).toBeDefined();
     // Should be a valid ISO date string
-    expect(new Date(result!.evaluatedAt).toISOString()).toBe(result!.evaluatedAt);
+    expect(new Date(result!.evaluatedAt).toISOString()).toBe(
+      result!.evaluatedAt,
+    );
   });
 
   it('invokes the judge LLM with a system prompt mentioning all three metrics', async () => {
@@ -119,7 +123,7 @@ describe('EvaluationsService (unit)', () => {
   });
 
   it('works without a userId (userId field is optional)', async () => {
-    const { userId: _omit, ...inputNoUser } = baseInput;
+    const { userId: _userId, ...inputNoUser } = baseInput;
     const result = await service.evaluate(inputNoUser);
 
     expect(result).not.toBeNull();
@@ -174,8 +178,8 @@ describe('EvaluationsService (unit)', () => {
 
   it('clamps out-of-range scores from misbehaving LLM to [0, 1]', async () => {
     judgeLlmMock.invoke.mockResolvedValueOnce({
-      faithfulness: 1.5,       // over 1
-      answer_relevance: -0.3,  // below 0
+      faithfulness: 1.5, // over 1
+      answer_relevance: -0.3, // below 0
       context_recall: 0.7,
     });
 

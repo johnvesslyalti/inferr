@@ -5,7 +5,11 @@ import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { DRIZZLE } from '../db/drizzle.provider';
 import { refreshTokens } from '../db/schema';
-import { TEST_JWT_SECRET, setTestJwtEnv, restoreTestJwtEnv } from '../../test/test-utils';
+import {
+  TEST_JWT_SECRET,
+  setTestJwtEnv,
+  restoreTestJwtEnv,
+} from '../../test/test-utils';
 
 describe('AuthService (unit)', () => {
   let service: AuthService;
@@ -93,12 +97,14 @@ describe('AuthService (unit)', () => {
 
   describe('signAccessToken', () => {
     it('should sign a JWT with sub/email/name and 15m expiry', () => {
-      const token = service.signAccessToken(mockUser as any);
+      const token = service.signAccessToken(mockUser);
       expect(typeof token).toBe('string');
       expect(token.length).toBeGreaterThan(10);
 
       // Verify payload manually (same secret)
-      const decoded = jwtService.verify(token, { secret: TEST_JWT_SECRET }) as any;
+      const decoded = jwtService.verify(token, {
+        secret: TEST_JWT_SECRET,
+      });
       expect(decoded.sub).toBe(mockUser.id);
       expect(decoded.email).toBe(mockUser.email);
       expect(decoded.name).toBe(mockUser.name);
@@ -145,7 +151,15 @@ describe('AuthService (unit)', () => {
       mockDb.select.mockReturnValueOnce({
         from: () => ({
           where: () => ({
-            limit: () => Promise.resolve([{ token: 'h', userId: 'u-123', revoked: false, expiresAt: past }]),
+            limit: () =>
+              Promise.resolve([
+                {
+                  token: 'h',
+                  userId: 'u-123',
+                  revoked: false,
+                  expiresAt: past,
+                },
+              ]),
           }),
         }),
       });
@@ -156,27 +170,30 @@ describe('AuthService (unit)', () => {
     });
 
     it('should perform normal rotation: insert new, revoke old, return new tokens', async () => {
-      const now = new Date();
+      const _now = new Date();
       const future = new Date(Date.now() + 1000 * 3600 * 24 * 7);
 
       // First select finds the valid stored token
       mockDb.select.mockReturnValueOnce({
         from: () => ({
           where: () => ({
-            limit: () => Promise.resolve([{
-              id: 'rt-1',
-              token: 'oldhash',
-              userId: 'u-123',
-              revoked: false,
-              expiresAt: future,
-              revokedAt: null,
-              replacedByHash: null,
-            }]),
+            limit: () =>
+              Promise.resolve([
+                {
+                  id: 'rt-1',
+                  token: 'oldhash',
+                  userId: 'u-123',
+                  revoked: false,
+                  expiresAt: future,
+                  revokedAt: null,
+                  replacedByHash: null,
+                },
+              ]),
           }),
         }),
       });
 
-      usersService.findById.mockResolvedValueOnce(mockUser as any);
+      usersService.findById.mockResolvedValueOnce(mockUser);
 
       const result = await service.rotateRefreshToken('old-raw-token');
 
@@ -194,7 +211,7 @@ describe('AuthService (unit)', () => {
 
     it('should handle reuse detection within grace window by following the chain', async () => {
       const now = Date.now();
-      const grace = 5_000;
+      const _grace = 5_000;
       const recently = new Date(now - 2000);
 
       const future = new Date(now + 1000 * 3600 * 24 * 7);
@@ -205,14 +222,17 @@ describe('AuthService (unit)', () => {
         .mockReturnValueOnce({
           from: () => ({
             where: () => ({
-              limit: () => Promise.resolve([{
-                token: 'revokedhash1',
-                userId: 'u-123',
-                revoked: true,
-                revokedAt: recently,
-                replacedByHash: 'hash2',
-                expiresAt: future,
-              }]),
+              limit: () =>
+                Promise.resolve([
+                  {
+                    token: 'revokedhash1',
+                    userId: 'u-123',
+                    revoked: true,
+                    revokedAt: recently,
+                    replacedByHash: 'hash2',
+                    expiresAt: future,
+                  },
+                ]),
             }),
           }),
         })
@@ -220,19 +240,22 @@ describe('AuthService (unit)', () => {
         .mockReturnValueOnce({
           from: () => ({
             where: () => ({
-              limit: () => Promise.resolve([{
-                token: 'hash2',
-                userId: 'u-123',
-                revoked: false,
-                revokedAt: null,
-                replacedByHash: null,
-                expiresAt: future,
-              }]),
+              limit: () =>
+                Promise.resolve([
+                  {
+                    token: 'hash2',
+                    userId: 'u-123',
+                    revoked: false,
+                    revokedAt: null,
+                    replacedByHash: null,
+                    expiresAt: future,
+                  },
+                ]),
             }),
           }),
         });
 
-      usersService.findById.mockResolvedValue(mockUser as any);
+      usersService.findById.mockResolvedValue(mockUser);
 
       // The rotate should succeed by rotating the live one in chain
       const result = await service.rotateRefreshToken('stale-raw-from-tab');
@@ -250,21 +273,24 @@ describe('AuthService (unit)', () => {
       mockDb.select.mockReturnValueOnce({
         from: () => ({
           where: () => ({
-            limit: () => Promise.resolve([{
-              token: 'oldrevoked',
-              userId: 'u-123',
-              revoked: true,
-              revokedAt: oldRevoke,
-              replacedByHash: 'nevermind',
-              expiresAt: future,
-            }]),
+            limit: () =>
+              Promise.resolve([
+                {
+                  token: 'oldrevoked',
+                  userId: 'u-123',
+                  revoked: true,
+                  revokedAt: oldRevoke,
+                  replacedByHash: 'nevermind',
+                  expiresAt: future,
+                },
+              ]),
           }),
         }),
       });
 
-      await expect(service.rotateRefreshToken('stale-outside-grace')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.rotateRefreshToken('stale-outside-grace'),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 

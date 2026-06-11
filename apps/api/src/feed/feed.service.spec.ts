@@ -9,7 +9,9 @@ describe('FeedService (unit)', () => {
   let aiService: jest.Mocked<AiService>;
   let mockDb: any;
 
-  const baseEmbedding = [0.1, 0.2 /* ... truncated in test, real uses 1536 but we don't care */];
+  const baseEmbedding = [
+    0.1, 0.2 /* ... truncated in test, real uses 1536 but we don't care */,
+  ];
 
   beforeEach(async () => {
     aiService = {
@@ -21,7 +23,7 @@ describe('FeedService (unit)', () => {
 
     // Mock db with support for select on userInterests + execute returning rows with cosine_distance
     mockDb = {
-      select: jest.fn((selection?: any) => {
+      select: jest.fn((_selection?: any) => {
         // Distinguish interests select vs others (but we only select interests in this service)
         return {
           from: jest.fn((table: any) => {
@@ -34,7 +36,11 @@ describe('FeedService (unit)', () => {
                 })),
               };
             }
-            return { where: jest.fn(() => ({ limit: jest.fn(() => Promise.resolve([])) })) };
+            return {
+              where: jest.fn(() => ({
+                limit: jest.fn(() => Promise.resolve([])),
+              })),
+            };
           }),
         };
       }),
@@ -140,8 +146,26 @@ describe('FeedService (unit)', () => {
 
     mockDb.execute.mockResolvedValue({
       rows: [
-        { id: 'f1', title: 'Good Match Old', url: 'f1', source: 'hn', summary: 's', created_at: old.toISOString(), tags: ['nextjs'], cosine_distance: '0.22' },
-        { id: 'f2', title: 'Second Best', url: 'f2', source: 'devto', summary: null, created_at: old.toISOString(), tags: [], cosine_distance: '0.33' },
+        {
+          id: 'f1',
+          title: 'Good Match Old',
+          url: 'f1',
+          source: 'hn',
+          summary: 's',
+          created_at: old.toISOString(),
+          tags: ['nextjs'],
+          cosine_distance: '0.22',
+        },
+        {
+          id: 'f2',
+          title: 'Second Best',
+          url: 'f2',
+          source: 'devto',
+          summary: null,
+          created_at: old.toISOString(),
+          tags: [],
+          cosine_distance: '0.33',
+        },
       ],
     });
 
@@ -157,7 +181,14 @@ describe('FeedService (unit)', () => {
     aiService.embed.mockResolvedValue(baseEmbedding);
     mockDb.execute.mockResolvedValue({
       rows: [
-        { id: 'd1', title: 'Debug 1', url: 'd1', source: 'hn', summary: 's', cosine_distance: '0.25' },
+        {
+          id: 'd1',
+          title: 'Debug 1',
+          url: 'd1',
+          source: 'hn',
+          summary: 's',
+          cosine_distance: '0.25',
+        },
       ],
     });
 

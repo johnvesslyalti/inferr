@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { JobsService } from './jobs.service';
 import { AiService } from '../ai/ai.service';
 import { DRIZZLE } from '../db/drizzle.provider';
-import { jobs, marketReports } from '../db/schema';
+import { marketReports } from '../db/schema';
 
 describe('JobsService (unit)', () => {
   let service: JobsService;
@@ -87,10 +87,12 @@ describe('JobsService (unit)', () => {
       mockDb.insert.mockReturnValueOnce({
         values: jest.fn(() => ({
           returning: jest.fn(() =>
-            Promise.resolve([{
-              roles: [{ role: 'Backend', demand: 4, trend: 'Very High' }],
-              generatedAt: new Date(),
-            }]),
+            Promise.resolve([
+              {
+                roles: [{ role: 'Backend', demand: 4, trend: 'Very High' }],
+                generatedAt: new Date(),
+              },
+            ]),
           ),
         })),
       });
@@ -103,9 +105,10 @@ describe('JobsService (unit)', () => {
         .mockReturnValueOnce({
           from: () => ({
             where: () => ({
-              orderBy: () => Promise.resolve([
-                { title: 'Senior Backend Eng', tags: ['node', 'postgres'] },
-              ]),
+              orderBy: () =>
+                Promise.resolve([
+                  { title: 'Senior Backend Eng', tags: ['node', 'postgres'] },
+                ]),
             }),
           }),
         });
@@ -126,11 +129,20 @@ describe('JobsService (unit)', () => {
       mockDb.select.mockReturnValueOnce({
         from: () => ({
           where: () => ({
-            orderBy: () => Promise.resolve([
-              { category: 'Engineering', tags: ['typescript', 'react'], company: 'Acme' },
-              { category: 'Engineering', tags: ['typescript'], company: 'Acme' },
-              { category: 'Data', tags: ['sql'], company: 'DataCo' },
-            ]),
+            orderBy: () =>
+              Promise.resolve([
+                {
+                  category: 'Engineering',
+                  tags: ['typescript', 'react'],
+                  company: 'Acme',
+                },
+                {
+                  category: 'Engineering',
+                  tags: ['typescript'],
+                  company: 'Acme',
+                },
+                { category: 'Data', tags: ['sql'], company: 'DataCo' },
+              ]),
           }),
         }),
       });
@@ -139,7 +151,9 @@ describe('JobsService (unit)', () => {
 
       expect(r.totalListings).toBe(3);
       expect(r.topSkills.find((s) => s.skill === 'typescript')!.count).toBe(2);
-      expect(r.roleBreakdown.find((c) => c.category === 'Engineering')!.count).toBe(2);
+      expect(
+        r.roleBreakdown.find((c) => c.category === 'Engineering')!.count,
+      ).toBe(2);
       expect(r.topCompanies[0]).toEqual({ company: 'Acme', count: 2 });
     });
   });
