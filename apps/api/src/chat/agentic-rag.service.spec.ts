@@ -3,6 +3,7 @@ import { AgenticRagService } from './agentic-rag.service';
 import { AiService } from '../ai/ai.service';
 import { DRIZZLE } from '../db/drizzle.provider';
 import { ChatService } from './chat.service';
+import { EvaluationsService } from '../evaluations/evaluations.service';
 
 // Hoisted mocks prevent loading real ESM-only @langchain packages (and transitive uuid etc)
 // during unit test collection/execution. We stub just enough for the SUT module to parse.
@@ -21,9 +22,10 @@ jest.mock('@langchain/openai', () => ({
 
 describe('AgenticRagService + ChatService (unit)', () => {
   let agentic: AgenticRagService;
-  let chatService: any; // we'll import dynamically to avoid circular in this file if needed
+  let chatService: any;
   let aiService: jest.Mocked<AiService>;
   let mockDb: any;
+  let mockEvaluations: jest.Mocked<EvaluationsService>;
 
   beforeEach(async () => {
     aiService = {
@@ -40,11 +42,17 @@ describe('AgenticRagService + ChatService (unit)', () => {
       update: jest.fn(),
     };
 
+    mockEvaluations = {
+      evaluate: jest.fn().mockResolvedValue(null),
+      evaluateAsync: jest.fn(), // fire-and-forget stub
+    } as any;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AgenticRagService,
         { provide: AiService, useValue: aiService },
         { provide: DRIZZLE, useValue: mockDb },
+        { provide: EvaluationsService, useValue: mockEvaluations },
       ],
     }).compile();
 
@@ -156,5 +164,50 @@ describe('AgenticRagService + ChatService (unit)', () => {
 
     expect(out.answer).toBe('Concise technical answer here.');
     expect(out.sources).toEqual([{ title: 'The One', url: 'u1', source: 'hn' }]);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Evaluation integration
+  // ---------------------------------------------------------------------------
+
+  it('calls evaluationsService.evaluateAsync fire-and-forget after a successful query', async () => {
+    // The graph mock already has answer + sources; evaluateAsync should be called once.
+    await agentic.query('u-eval', 'What is vector search?');
+
+    expect(mockEvaluations.evaluateAsync).toHaveBeenCalledTimes(1);
+    const evalArg = mockEvaluations.evaluateAsync.mock.calls[0][0];
+    expect(evalArg.question).toBe('What is vector search?');
+    expect(evalArg.userId).toBe('u-eval');
+    expect(evalArg.answer).toContain('generated answer');
+  });
+
+  it('still returns a result when EvaluationsService is not injected (@Optional)', async () => {
+    // Build a separate module without providing EvaluationsService to confirm
+    // the @Optional() decorator means the service degrades gracefully.
+    const moduleNoEval: TestingModule = await Test.createTestingModule({
+      providers: [
+        AgenticRagService,
+        { provide: AiService, useValue: aiService },
+        { provide: DRIZZLE, useValue: mockDb },
+        // EvaluationsService intentionally omitted
+      ],
+    }).compile();
+
+    const agenticNoEval = moduleNoEval.get<AgenticRagService>(AgenticRagService);
+
+    // Set up same graph stub
+    (agenticNoEval as any)._graph = {
+      invoke: jest.fn().mockResolvedValue({
+        answer: 'Answer without eval.',
+        sources: [],
+        relevantDocuments: [],
+        documents: [],
+      }),
+    };
+
+    const res = await agenticNoEval.query('u-no-eval', 'Test?');
+    expect(res.answer).toBe('Answer without eval.');
+    expect(res.sources).toEqual([]);
+    // No error thrown — EvaluationsService absence handled via @Optional
   });
 });
