@@ -83,7 +83,9 @@ export class EvaluationsService {
     const { question, answer, context, userId } = input;
 
     if (!answer?.trim() || !question?.trim()) {
-      this.logger.warn('EvaluationsService.evaluate: empty question or answer, skipping');
+      this.logger.warn(
+        'EvaluationsService.evaluate: empty question or answer, skipping',
+      );
       return null;
     }
 

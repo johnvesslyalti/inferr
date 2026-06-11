@@ -192,9 +192,10 @@ export class AgenticRagService {
 
     // Fire-and-forget: score the response without blocking the user reply.
     if (this.evaluationsService) {
-      const contextForEval = (finalState.relevantDocuments?.length > 0
-        ? finalState.relevantDocuments
-        : finalState.documents ?? []
+      const contextForEval = (
+        finalState.relevantDocuments?.length > 0
+          ? finalState.relevantDocuments
+          : (finalState.documents ?? [])
       ).map((d) => ({
         title: d.title,
         url: d.url,
