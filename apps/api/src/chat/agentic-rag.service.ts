@@ -3,6 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -12,6 +13,7 @@ import { StateGraph, START, END, Annotation } from '@langchain/langgraph';
 import { DRIZZLE } from '../db/drizzle.provider';
 import type { DrizzleDB } from '../db/drizzle.provider';
 import { AiService } from '../ai/ai.service';
+import { EvaluationsService } from '../evaluations/evaluations.service';
 import type {
   ChatSource,
   ChatResult,
@@ -69,6 +71,7 @@ export class AgenticRagService {
   constructor(
     @Inject(DRIZZLE) private db: DrizzleDB,
     private readonly aiService: AiService,
+    @Optional() private readonly evaluationsService?: EvaluationsService,
   ) {}
 
   /**
@@ -186,6 +189,35 @@ export class AgenticRagService {
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const finalState = (await this.graph.invoke(initialState)) as RagState;
+
+    // Fire-and-forget: score the response without blocking the user reply.
+    if (this.evaluationsService) {
+      const contextForEval = (finalState.relevantDocuments?.length > 0
+        ? finalState.relevantDocuments
+        : finalState.documents ?? []
+      ).map((d) => ({
+        title: d.title,
+        url: d.url,
+        source: d.source,
+        summary: d.summary,
+      }));
+
+      this.evaluationsService.evaluateAsync(
+        {
+          question: q,
+          answer: finalState.answer?.trim() ?? '',
+          context: contextForEval,
+          userId,
+        },
+        (result) => {
+          this.logger.debug(
+            `RAG eval scores — faithfulness: ${result.scores.faithfulness.toFixed(2)}, ` +
+              `relevance: ${result.scores.answer_relevance.toFixed(2)}, ` +
+              `recall: ${result.scores.context_recall.toFixed(2)}`,
+          );
+        },
+      );
+    }
 
     return {
       answer: finalState.answer?.trim() ?? '',
