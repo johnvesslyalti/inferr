@@ -7,6 +7,6 @@
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "transformIgnorePatterns": [
-    "node_modules/(?!(uuid|@langchain|langchain|@langchain/.*)/)"
+    "node_modules/(?!(@langchain|langchain|@langchain/.*)/)"
   ]
 }

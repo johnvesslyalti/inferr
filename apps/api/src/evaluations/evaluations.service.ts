@@ -66,7 +66,8 @@ export class EvaluationsService {
       const llm = new ChatOpenAI({
         model: 'gpt-4o-mini',
         temperature: 0,
-        maxTokens: 300,
+        // Structured JSON output is ~60 tokens; 150 is generous with headroom.
+        maxTokens: 150,
       });
       this._judgeLlm = llm.withStructuredOutput(JudgeSchema);
     }

@@ -216,6 +216,8 @@ export class AgenticRagService {
               `relevance: ${result.scores.answer_relevance.toFixed(2)}, ` +
               `recall: ${result.scores.context_recall.toFixed(2)}`,
           );
+          // TODO: persist result to ai_evaluations table for analytics/dashboarding.
+          // Tracked in: https://github.com/johnvesslyalti/inferr/issues (follow-up)
         },
       );
     }
