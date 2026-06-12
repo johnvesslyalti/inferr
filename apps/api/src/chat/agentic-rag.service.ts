@@ -14,18 +14,33 @@ import { DRIZZLE } from '../db/drizzle.provider';
 import type { DrizzleDB } from '../db/drizzle.provider';
 import { AiService } from '../ai/ai.service';
 import { EvaluationsService } from '../evaluations/evaluations.service';
+import { aiEvaluations } from '../db/schema';
 import type {
   ChatSource,
   ChatResult,
   GraphHistoryMessage,
 } from './dto/chat.dto';
 
-interface RetrievedDoc {
+export interface RetrievedDoc {
   id: string;
   title: string;
   url: string;
   source: string;
   summary: string | null;
+}
+
+export interface RagQueryDetails {
+  answer: string;
+  sources: ChatSource[];
+  searchQuery: string;
+  iterations: number;
+  documents: RetrievedDoc[];
+  relevantDocuments: RetrievedDoc[];
+}
+
+export interface QueryWithDetailsOptions {
+  /** Skip fire-and-forget runtime eval (used by offline golden-set runner). */
+  skipRuntimeEval?: boolean;
 }
 
 /**
@@ -175,6 +190,23 @@ export class AgenticRagService {
     question: string,
     history: GraphHistoryMessage[] = [],
   ): Promise<ChatResult> {
+    const details = await this.queryWithDetails(userId, question, history);
+    return {
+      answer: details.answer,
+      sources: details.sources,
+    };
+  }
+
+  /**
+   * Full pipeline result for offline evaluation and debugging.
+   * Exposes retrieved/graded documents alongside the final answer.
+   */
+  async queryWithDetails(
+    userId: string,
+    question: string,
+    history: GraphHistoryMessage[] = [],
+    options: QueryWithDetailsOptions = {},
+  ): Promise<RagQueryDetails> {
     this.logger.log(
       `Agentic RAG query from user ${userId}: "${question}" (history: ${history.length} turns)`,
     );
@@ -191,7 +223,7 @@ export class AgenticRagService {
     const finalState = (await this.graph.invoke(initialState)) as RagState;
 
     // Fire-and-forget: score the response without blocking the user reply.
-    if (this.evaluationsService) {
+    if (this.evaluationsService && !options.skipRuntimeEval) {
       const contextForEval = (
         finalState.relevantDocuments?.length > 0
           ? finalState.relevantDocuments
@@ -216,8 +248,24 @@ export class AgenticRagService {
               `relevance: ${result.scores.answer_relevance.toFixed(2)}, ` +
               `recall: ${result.scores.context_recall.toFixed(2)}`,
           );
-          // TODO: persist result to ai_evaluations table for analytics/dashboarding.
-          // Tracked in: https://github.com/johnvesslyalti/inferr/issues (follow-up)
+          // Persist scores to DB for analytics and dashboarding.
+          this.db
+            .insert(aiEvaluations)
+            .values({
+              id: result.id,
+              userId: result.userId ?? null,
+              question: result.question,
+              answer: result.answer,
+              faithfulness: result.scores.faithfulness,
+              answerRelevance: result.scores.answer_relevance,
+              contextRecall: result.scores.context_recall,
+              evaluatedAt: new Date(result.evaluatedAt),
+            })
+            .catch((err: unknown) => {
+              this.logger.error(
+                `Failed to persist evaluation ${result.id}: ${String(err)}`,
+              );
+            });
         },
       );
     }
@@ -225,6 +273,10 @@ export class AgenticRagService {
     return {
       answer: finalState.answer?.trim() ?? '',
       sources: finalState.sources ?? [],
+      searchQuery: finalState.searchQuery,
+      iterations: finalState.iterations ?? 0,
+      documents: finalState.documents ?? [],
+      relevantDocuments: finalState.relevantDocuments ?? [],
     };
   }
 

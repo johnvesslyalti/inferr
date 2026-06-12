@@ -9,6 +9,7 @@ import {
   boolean,
   jsonb,
   bigint,
+  real,
 } from 'drizzle-orm/pg-core';
 
 const vector = (name: string, dimensions: number) =>
@@ -135,6 +136,36 @@ export const marketReports = pgTable('market_reports', {
   generatedAt: timestamp('generated_at').defaultNow().notNull(),
 });
 
+/**
+ * Stores LLM-as-judge evaluation scores for every RAG response.
+ * Written fire-and-forget by AgenticRagService after each query().
+ *
+ * Metrics (all 0–1, higher = better):
+ *   faithfulness     — answer grounded in retrieved context
+ *   answer_relevance — answer addresses the question
+ *   context_recall   — retrieved context had the needed information
+ */
+export const aiEvaluations = pgTable(
+  'ai_evaluations',
+  {
+    id: uuid('id').primaryKey(), // set by EvaluationsService (crypto.randomUUID)
+    userId: uuid('user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    question: text('question').notNull(),
+    answer: text('answer').notNull(),
+    faithfulness: real('faithfulness').notNull(),
+    answerRelevance: real('answer_relevance').notNull(),
+    contextRecall: real('context_recall').notNull(),
+    evaluatedAt: timestamp('evaluated_at').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    index('ai_evaluations_user_id_idx').on(t.userId),
+    index('ai_evaluations_evaluated_at_idx').on(t.evaluatedAt),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Article = typeof articles.$inferSelect;
@@ -149,6 +180,8 @@ export type Job = typeof jobs.$inferSelect;
 export type NewJob = typeof jobs.$inferInsert;
 export type MarketReportRow = typeof marketReports.$inferSelect;
 export type NewMarketReportRow = typeof marketReports.$inferInsert;
+export type AiEvaluation = typeof aiEvaluations.$inferSelect;
+export type NewAiEvaluation = typeof aiEvaluations.$inferInsert;
 
 export const mcpClients = pgTable('mcp_clients', {
   clientId: varchar('client_id', { length: 255 }).primaryKey(),
