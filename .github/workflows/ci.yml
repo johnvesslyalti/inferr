@@ -35,8 +35,14 @@ jobs:
       - name: Lint
         run: pnpm turbo lint
 
-  test:
-    name: Test (API)
+  # ---------------------------------------------------------------------------
+  # Unit tests — run on every push, no real DB needed for unit tests but the
+  # job keeps Postgres alive for migration validation.
+  # OPENAI_API_KEY is set to a stub — EvaluationsService and AgenticRagService
+  # are fully mocked in unit tests so no real OpenAI calls are made.
+  # ---------------------------------------------------------------------------
+  test-unit:
+    name: Unit Tests (API)
     runs-on: ubuntu-latest
 
     services:
@@ -54,16 +60,6 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
     env:
       DB_HOST: localhost
       DB_PORT: 5432
@@ -71,11 +67,9 @@ jobs:
       DB_PASSWORD: postgres
       DB_NAME: ai_feed_test
       DB_SSL: 'false'
-      REDIS_HOST: localhost
-      REDIS_PORT: 6379
       NODE_ENV: test
-      # Stub secrets so NestJS config validation passes
-      OPENAI_API_KEY: sk-test-placeholder
+      # Stub — unit tests mock all LLM/OpenAI calls; no real API traffic.
+      OPENAI_API_KEY: sk-unit-test-stub-no-real-calls
       GOOGLE_CLIENT_ID: placeholder
       GOOGLE_CLIENT_SECRET: placeholder
       GOOGLE_CALLBACK_URL: http://localhost:3001/auth/google/callback
@@ -105,8 +99,86 @@ jobs:
       - name: Run database migrations
         run: pnpm --filter @ai-developer-feed/api db:migrate
 
-      - name: Run API unit tests
-        run: pnpm --filter @ai-developer-feed/api test --passWithNoTests
+      - name: Run API unit tests with coverage
+        run: pnpm --filter @ai-developer-feed/api test:cov --passWithNoTests
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-coverage-${{ github.sha }}
+          path: apps/api/coverage/
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # E2E tests — only run on PRs targeting main and on pushes to main.
+  # Requires a real DB + migrations. Skipped on feature branches to keep CI fast.
+  # ---------------------------------------------------------------------------
+  test-e2e:
+    name: E2E Tests (API)
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ai_feed_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/ai_feed_e2e
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: ai_feed_e2e
+      DB_SSL: 'false'
+      NODE_ENV: test
+      OPENAI_API_KEY: sk-e2e-test-stub-no-real-calls
+      GOOGLE_CLIENT_ID: placeholder
+      GOOGLE_CLIENT_SECRET: placeholder
+      GOOGLE_CALLBACK_URL: http://localhost:3001/auth/google/callback
+      FRONTEND_URL: http://localhost:3000
+      JWT_SECRET: test-jwt-secret-for-api-tests-1234567890abcdef
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Enable pgvector extension
+        run: psql -h localhost -U postgres -d ai_feed_e2e -c "CREATE EXTENSION IF NOT EXISTS vector;"
+        env:
+          PGPASSWORD: postgres
+
+      - name: Run database migrations
+        run: pnpm --filter @ai-developer-feed/api db:migrate
+
+      - name: Seed test database
+        run: pnpm --filter @ai-developer-feed/api db:seed
+        continue-on-error: true  # seed may be idempotent or optional for some envs
+
+      - name: Run E2E tests
+        run: pnpm --filter @ai-developer-feed/api test:e2e --passWithNoTests
 
   build:
     name: Build
