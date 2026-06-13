@@ -21,6 +21,11 @@ describe('ScraperService (unit)', () => {
           where: jest.fn(() => Promise.resolve({ rowCount: 0 })),
         })),
       })),
+      delete: jest.fn(() => ({
+        where: jest.fn(() => ({
+          returning: jest.fn(() => Promise.resolve([])),
+        })),
+      })),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -76,7 +81,7 @@ describe('ScraperService (unit)', () => {
     const saved = await service.scrapeHackerNews();
 
     expect(global.fetch).toHaveBeenCalledWith(
-      'https://hn.algolia.com/api/v1/search?tags=story&hitsPerPage=30',
+      'https://hn.algolia.com/api/v1/search_by_date?tags=story&hitsPerPage=30',
     );
     expect(saved).toEqual([{ id: 'new1', url: 'https://ex.com/ts' }]);
     // tags: [] for HN
@@ -197,5 +202,18 @@ describe('ScraperService (unit)', () => {
     expect(result.devto).toBe(0);
     expect(result.content.saved).toBe(1);
     expect(service.fetchContent).toHaveBeenCalledWith('https://h.com');
+  });
+
+  it('cleanOldArticles calls db delete with correct date and returns count', async () => {
+    mockDb.delete.mockReturnValueOnce({
+      where: jest.fn(() => ({
+        returning: jest.fn(() => Promise.resolve([{ id: 'art-1' }, { id: 'art-2' }])),
+      })),
+    });
+
+    const count = await service.cleanOldArticles(7);
+
+    expect(mockDb.delete).toHaveBeenCalled();
+    expect(count).toBe(2);
   });
 });
