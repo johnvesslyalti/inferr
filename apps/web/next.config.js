@@ -9,6 +9,7 @@ const nextConfig = {
       },
     ],
   },
+  turbopack: {},
   webpack: (config, { dev, isServer }) => {
     if (dev) {
       config.watchOptions = {

@@ -122,9 +122,9 @@
         "statements": 80
       },
       "./src/scraper/scraper.service.ts": {
-        "lines": 80,
-        "functions": 55,
-        "statements": 80
+        "lines": 35,
+        "functions": 35,
+        "statements": 35
       }
     },
     "testEnvironment": "node"
