@@ -44,6 +44,9 @@ export class SchedulerService {
       const { processed, failed } =
         await this.aiService.processUnsummarized(50);
       this.logger.log(`Summarized/embedded: ${processed} ok, ${failed} failed`);
+
+      const cleaned = await this.scraperService.cleanOldArticles(7);
+      this.logger.log(`Cleaned up ${cleaned} articles older than 7 days`);
     } catch (err) {
       this.logger.error(
         'Daily scrape pipeline failed',

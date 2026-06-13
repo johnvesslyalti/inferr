@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as cheerio from 'cheerio';
-import { eq } from 'drizzle-orm';
+import { eq, lt } from 'drizzle-orm';
 import { DRIZZLE } from '../db/drizzle.provider';
 import type { DrizzleDB } from '../db/drizzle.provider';
 import { articles, NewArticle } from '../db/schema';
@@ -54,11 +54,25 @@ export class ScraperService {
     return { hn: hn.length, devto: devto.length, content };
   }
 
+  async cleanOldArticles(days = 7): Promise<number> {
+    this.logger.log(`Cleaning up articles older than ${days} days...`);
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    
+    const deleted = await this.db
+      .delete(articles)
+      .where(lt(articles.createdAt, cutoff))
+      .returning({ id: articles.id });
+      
+    this.logger.log(`Cleaned up ${deleted.length} articles older than ${days} days.`);
+    return deleted.length;
+  }
+
+
   async scrapeHackerNews(): Promise<SavedArticle[]> {
     this.logger.log('Scraping Hacker News...');
 
     const res = await fetch(
-      'https://hn.algolia.com/api/v1/search?tags=story&hitsPerPage=30',
+      'https://hn.algolia.com/api/v1/search_by_date?tags=story&hitsPerPage=30',
     );
     if (!res.ok) throw new Error(`HN API error: ${res.status}`);
 

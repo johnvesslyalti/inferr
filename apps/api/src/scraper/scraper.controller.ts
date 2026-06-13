@@ -15,9 +15,11 @@ export class ScraperController {
   async run(): Promise<{
     saved: ScrapeResult;
     summarized: { processed: number; failed: number };
+    cleaned: number;
   }> {
     const saved = await this.scraperService.scrapeAll();
     const summarized = await this.aiService.processUnsummarized(50);
-    return { saved, summarized };
+    const cleaned = await this.scraperService.cleanOldArticles(7);
+    return { saved, summarized, cleaned };
   }
 }
