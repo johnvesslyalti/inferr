@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as cheerio from 'cheerio';
-import { eq, lt, desc, not, inArray } from 'drizzle-orm';
+import { eq, desc, not, inArray } from 'drizzle-orm';
 import { DRIZZLE } from '../db/drizzle.provider';
 import type { DrizzleDB } from '../db/drizzle.provider';
 import { articles, NewArticle, userInterests } from '../db/schema';
@@ -32,6 +32,39 @@ interface DevToArticle {
   tag_list: string[];
 }
 
+interface RedditChild {
+  data: {
+    title: string;
+    url: string;
+    created_utc: number;
+  };
+}
+
+interface RedditSearchResponse {
+  data?: {
+    children?: RedditChild[];
+  };
+}
+
+interface TechCrunchPost {
+  title?: {
+    rendered?: string;
+  };
+  link?: string;
+  date?: string;
+}
+
+interface GitHubItem {
+  full_name: string;
+  description: string | null;
+  html_url: string;
+  created_at: string;
+}
+
+interface GitHubSearchResponse {
+  items?: GitHubItem[];
+}
+
 const CONTENT_MAX_CHARS = 8000;
 const FETCH_TIMEOUT_MS = 10_000;
 const CONTENT_CONCURRENCY = 5;
@@ -44,7 +77,9 @@ export class ScraperService {
 
   async scrapeAll(): Promise<ScrapeResult> {
     const tags = await this.getUniqueUserInterests();
-    this.logger.log(`Running balanced scraper for active user interests: ${tags.join(', ')}`);
+    this.logger.log(
+      `Running balanced scraper for active user interests: ${tags.join(', ')}`,
+    );
 
     const [
       hn,
@@ -91,7 +126,9 @@ export class ScraperService {
       }
     }
     const uniqueArticles = Array.from(uniqueMap.values());
-    this.logger.log(`Scraped ${uniqueArticles.length} unique articles across 10 sources`);
+    this.logger.log(
+      `Scraped ${uniqueArticles.length} unique articles across 10 sources`,
+    );
 
     // Save articles (deduplicating in DB via onConflictDoNothing)
     const newArticles = await this.saveArticles(uniqueArticles);
@@ -110,7 +147,9 @@ export class ScraperService {
   }
 
   async cleanOldArticles(limit = 50): Promise<number> {
-    this.logger.log(`Pruning database to keep only the ${limit} most recent articles...`);
+    this.logger.log(
+      `Pruning database to keep only the ${limit} most recent articles...`,
+    );
     const recent = await this.db
       .select({ id: articles.id })
       .from(articles)
@@ -130,7 +169,9 @@ export class ScraperService {
   }
 
   async getUniqueUserInterests(): Promise<string[]> {
-    const rows = await this.db.select({ tags: userInterests.tags }).from(userInterests);
+    const rows = await this.db
+      .select({ tags: userInterests.tags })
+      .from(userInterests);
     const tagsSet = new Set<string>();
     for (const row of rows) {
       if (Array.isArray(row.tags)) {
@@ -149,7 +190,18 @@ export class ScraperService {
     }
 
     // Fallback tags (broad tech domains)
-    return ['ai', 'webdev', 'devops', 'security', 'database', 'system-design', 'open-source', 'mobile', 'hardware', 'blockchain'];
+    return [
+      'ai',
+      'webdev',
+      'devops',
+      'security',
+      'database',
+      'system-design',
+      'open-source',
+      'mobile',
+      'hardware',
+      'blockchain',
+    ];
   }
 
   async scrapeHackerNews(tags: string[]): Promise<NewArticle[]> {
@@ -175,7 +227,7 @@ export class ScraperService {
           this.logger.warn(`Failed to scrape HN for tag ${tag}: ${err}`);
           return [];
         }
-      })
+      }),
     );
     return results.flat();
   }
@@ -185,9 +237,12 @@ export class ScraperService {
     const results = await Promise.all(
       tags.map(async (tag) => {
         try {
-          const res = await fetch(`https://dev.to/api/articles?tag=${encodeURIComponent(tag)}&per_page=5`, {
-            headers: { 'User-Agent': 'ai-developer-feed/1.0' },
-          });
+          const res = await fetch(
+            `https://dev.to/api/articles?tag=${encodeURIComponent(tag)}&per_page=5`,
+            {
+              headers: { 'User-Agent': 'ai-developer-feed/1.0' },
+            },
+          );
           if (!res.ok) return [];
           const data = (await res.json()) as DevToArticle[];
           return data.map((article) => ({
@@ -201,26 +256,28 @@ export class ScraperService {
           this.logger.warn(`Failed to scrape Dev.to for tag ${tag}: ${err}`);
           return [];
         }
-      })
+      }),
     );
     return results.flat();
   }
 
   async scrapeRedditProgramming(tags: string[]): Promise<NewArticle[]> {
-    this.logger.log(`Scraping Reddit /r/programming for tags: ${tags.join(', ')}`);
+    this.logger.log(
+      `Scraping Reddit /r/programming for tags: ${tags.join(', ')}`,
+    );
     const results = await Promise.all(
       tags.map(async (tag) => {
         try {
           const res = await fetch(
             `https://www.reddit.com/r/programming/search.json?q=${encodeURIComponent(tag)}&restrict_sr=1&sort=new&limit=5`,
-            { headers: { 'User-Agent': 'ai-developer-feed/1.0' } }
+            { headers: { 'User-Agent': 'ai-developer-feed/1.0' } },
           );
           if (!res.ok) return [];
-          const data = (await res.json()) as any;
+          const data = (await res.json()) as RedditSearchResponse;
           const children = data?.data?.children ?? [];
           return children
-            .filter((c: any) => c?.data?.url)
-            .map((c: any) => ({
+            .filter((c) => c?.data?.url)
+            .map((c) => ({
               title: c.data.title,
               url: c.data.url,
               source: 'reddit_programming',
@@ -228,10 +285,12 @@ export class ScraperService {
               publishedAt: new Date(c.data.created_utc * 1000),
             }));
         } catch (err) {
-          this.logger.warn(`Failed to scrape Reddit /r/programming for tag ${tag}: ${err}`);
+          this.logger.warn(
+            `Failed to scrape Reddit /r/programming for tag ${tag}: ${err}`,
+          );
           return [];
         }
-      })
+      }),
     );
     return results.flat();
   }
@@ -243,14 +302,14 @@ export class ScraperService {
         try {
           const res = await fetch(
             `https://www.reddit.com/r/webdev/search.json?q=${encodeURIComponent(tag)}&restrict_sr=1&sort=new&limit=5`,
-            { headers: { 'User-Agent': 'ai-developer-feed/1.0' } }
+            { headers: { 'User-Agent': 'ai-developer-feed/1.0' } },
           );
           if (!res.ok) return [];
-          const data = (await res.json()) as any;
+          const data = (await res.json()) as RedditSearchResponse;
           const children = data?.data?.children ?? [];
           return children
-            .filter((c: any) => c?.data?.url)
-            .map((c: any) => ({
+            .filter((c) => c?.data?.url)
+            .map((c) => ({
               title: c.data.title,
               url: c.data.url,
               source: 'reddit_webdev',
@@ -258,10 +317,12 @@ export class ScraperService {
               publishedAt: new Date(c.data.created_utc * 1000),
             }));
         } catch (err) {
-          this.logger.warn(`Failed to scrape Reddit /r/webdev for tag ${tag}: ${err}`);
+          this.logger.warn(
+            `Failed to scrape Reddit /r/webdev for tag ${tag}: ${err}`,
+          );
           return [];
         }
-      })
+      }),
     );
     return results.flat();
   }
@@ -271,7 +332,9 @@ export class ScraperService {
     const results = await Promise.all(
       tags.map(async (tag) => {
         try {
-          const res = await fetch(`https://lobste.rs/t/${encodeURIComponent(tag)}.rss`);
+          const res = await fetch(
+            `https://lobste.rs/t/${encodeURIComponent(tag)}.rss`,
+          );
           if (!res.ok) return [];
           const xml = await res.text();
           const $ = cheerio.load(xml, { xmlMode: true });
@@ -296,7 +359,7 @@ export class ScraperService {
           this.logger.warn(`Failed to scrape Lobste.rs for tag ${tag}: ${err}`);
           return [];
         }
-      })
+      }),
     );
     return results.flat();
   }
@@ -306,7 +369,9 @@ export class ScraperService {
     const results = await Promise.all(
       tags.map(async (tag) => {
         try {
-          const res = await fetch(`https://hashnode.com/n/${encodeURIComponent(tag)}/rss`);
+          const res = await fetch(
+            `https://hashnode.com/n/${encodeURIComponent(tag)}/rss`,
+          );
           if (!res.ok) return [];
           const xml = await res.text();
           const $ = cheerio.load(xml, { xmlMode: true });
@@ -331,7 +396,7 @@ export class ScraperService {
           this.logger.warn(`Failed to scrape Hashnode for tag ${tag}: ${err}`);
           return [];
         }
-      })
+      }),
     );
     return results.flat();
   }
@@ -341,7 +406,9 @@ export class ScraperService {
     const results = await Promise.all(
       tags.map(async (tag) => {
         try {
-          const res = await fetch(`https://medium.com/feed/tag/${encodeURIComponent(tag)}`);
+          const res = await fetch(
+            `https://medium.com/feed/tag/${encodeURIComponent(tag)}`,
+          );
           if (!res.ok) return [];
           const xml = await res.text();
           const $ = cheerio.load(xml, { xmlMode: true });
@@ -366,7 +433,7 @@ export class ScraperService {
           this.logger.warn(`Failed to scrape Medium for tag ${tag}: ${err}`);
           return [];
         }
-      })
+      }),
     );
     return results.flat();
   }
@@ -380,7 +447,7 @@ export class ScraperService {
             `https://techcrunch.com/wp-json/wp/v2/posts?search=${encodeURIComponent(tag)}&per_page=5`,
           );
           if (!res.ok) return [];
-          const data = (await res.json()) as any[];
+          const data = (await res.json()) as TechCrunchPost[];
           return data.map((post) => ({
             title: post?.title?.rendered ?? '',
             url: post?.link ?? '',
@@ -389,10 +456,12 @@ export class ScraperService {
             publishedAt: post?.date ? new Date(post.date) : new Date(),
           }));
         } catch (err) {
-          this.logger.warn(`Failed to scrape TechCrunch for tag ${tag}: ${err}`);
+          this.logger.warn(
+            `Failed to scrape TechCrunch for tag ${tag}: ${err}`,
+          );
           return [];
         }
-      })
+      }),
     );
     return results.flat();
   }
@@ -404,23 +473,25 @@ export class ScraperService {
         try {
           const res = await fetch(
             `https://api.github.com/search/repositories?q=${encodeURIComponent(tag)}&sort=stars&order=desc&per_page=5`,
-            { headers: { 'User-Agent': 'ai-developer-feed/1.0' } }
+            { headers: { 'User-Agent': 'ai-developer-feed/1.0' } },
           );
           if (!res.ok) return [];
-          const data = (await res.json()) as any;
+          const data = (await res.json()) as GitHubSearchResponse;
           const items = data?.items ?? [];
-          return items.map((item: any) => ({
+          return items.map((item) => ({
             title: `${item.full_name}: ${item.description || ''}`,
             url: item.html_url,
             source: 'github',
             tags: [tag],
-            publishedAt: item.created_at ? new Date(item.created_at) : new Date(),
+            publishedAt: item.created_at
+              ? new Date(item.created_at)
+              : new Date(),
           }));
         } catch (err) {
           this.logger.warn(`Failed to scrape GitHub for tag ${tag}: ${err}`);
           return [];
         }
-      })
+      }),
     );
     return results.flat();
   }
@@ -430,7 +501,9 @@ export class ScraperService {
     const results = await Promise.all(
       tags.map(async (tag) => {
         try {
-          const res = await fetch(`https://hackernoon.com/feed/tag/${encodeURIComponent(tag)}`);
+          const res = await fetch(
+            `https://hackernoon.com/feed/tag/${encodeURIComponent(tag)}`,
+          );
           if (!res.ok) return [];
           const xml = await res.text();
           const $ = cheerio.load(xml, { xmlMode: true });
@@ -452,10 +525,12 @@ export class ScraperService {
           });
           return mapped;
         } catch (err) {
-          this.logger.warn(`Failed to scrape HackerNoon for tag ${tag}: ${err}`);
+          this.logger.warn(
+            `Failed to scrape HackerNoon for tag ${tag}: ${err}`,
+          );
           return [];
         }
-      })
+      }),
     );
     return results.flat();
   }

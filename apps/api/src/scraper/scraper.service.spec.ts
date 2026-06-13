@@ -160,7 +160,15 @@ describe('ScraperService (unit)', () => {
     jest.spyOn(service, 'getUniqueUserInterests').mockResolvedValue(['ai']);
     jest.spyOn(service, 'cleanOldArticles').mockResolvedValue(0);
 
-    jest.spyOn(service, 'scrapeHackerNews').mockResolvedValue([{ title: 'H1', url: 'https://h.com', source: 'hn', tags: ['ai'], publishedAt: new Date() }]);
+    jest.spyOn(service, 'scrapeHackerNews').mockResolvedValue([
+      {
+        title: 'H1',
+        url: 'https://h.com',
+        source: 'hn',
+        tags: ['ai'],
+        publishedAt: new Date(),
+      },
+    ]);
     jest.spyOn(service, 'scrapeDevTo').mockResolvedValue([]);
     jest.spyOn(service, 'scrapeRedditProgramming').mockResolvedValue([]);
     jest.spyOn(service, 'scrapeRedditWebdev').mockResolvedValue([]);
@@ -172,7 +180,9 @@ describe('ScraperService (unit)', () => {
     jest.spyOn(service, 'scrapeHackerNoon').mockResolvedValue([]);
 
     // saveArticles mock
-    jest.spyOn(service as any, 'saveArticles').mockResolvedValue([{ id: 'h1', url: 'https://h.com' }]);
+    jest
+      .spyOn(service as any, 'saveArticles')
+      .mockResolvedValue([{ id: 'h1', url: 'https://h.com' }]);
 
     // content fetch for the new one
     jest.spyOn(service, 'fetchContent').mockResolvedValue('some article body');
@@ -196,7 +206,9 @@ describe('ScraperService (unit)', () => {
     mockDb.select.mockReturnValueOnce({
       from: jest.fn(() => ({
         orderBy: jest.fn(() => ({
-          limit: jest.fn(() => Promise.resolve([{ id: 'art-1' }, { id: 'art-2' }])),
+          limit: jest.fn(() =>
+            Promise.resolve([{ id: 'art-1' }, { id: 'art-2' }]),
+          ),
         })),
       })),
     });
