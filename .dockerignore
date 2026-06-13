@@ -4,7 +4,6 @@ apps/api/node_modules
 apps/api/dist
 apps/api/coverage
 apps/api/test
-apps/api/drizzle.config.ts
 **/*.tsbuildinfo
 **/.env
 .git

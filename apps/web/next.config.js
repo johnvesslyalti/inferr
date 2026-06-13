@@ -9,6 +9,19 @@ const nextConfig = {
       },
     ],
   },
+  webpack: (config, { dev, isServer }) => {
+    if (dev) {
+      config.watchOptions = {
+        ignored: [
+          '**/node_modules/**',
+          '**/.git/**',
+          '**/.pnpm-store/**',
+          '**/.next/**',
+        ],
+      };
+    }
+    return config;
+  },
 }
 
 module.exports = nextConfig

@@ -1,9 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as cheerio from 'cheerio';
-import { eq, lt } from 'drizzle-orm';
+import { eq, lt, desc, not, inArray } from 'drizzle-orm';
 import { DRIZZLE } from '../db/drizzle.provider';
 import type { DrizzleDB } from '../db/drizzle.provider';
-import { articles, NewArticle } from '../db/schema';
+import { articles, NewArticle, userInterests } from '../db/schema';
 
 export interface ScrapeResult {
   hn: number;
@@ -43,73 +43,421 @@ export class ScraperService {
   constructor(@Inject(DRIZZLE) private db: DrizzleDB) {}
 
   async scrapeAll(): Promise<ScrapeResult> {
-    const [hn, devto] = await Promise.all([
-      this.scrapeHackerNews(),
-      this.scrapeDevTo(),
+    const tags = await this.getUniqueUserInterests();
+    this.logger.log(`Running balanced scraper for active user interests: ${tags.join(', ')}`);
+
+    const [
+      hn,
+      devto,
+      redditProg,
+      redditWebdev,
+      lobsters,
+      hashnode,
+      medium,
+      techcrunch,
+      github,
+      hackernoon,
+    ] = await Promise.all([
+      this.scrapeHackerNews(tags),
+      this.scrapeDevTo(tags),
+      this.scrapeRedditProgramming(tags),
+      this.scrapeRedditWebdev(tags),
+      this.scrapeLobsters(tags),
+      this.scrapeHashnode(tags),
+      this.scrapeMedium(tags),
+      this.scrapeTechCrunch(tags),
+      this.scrapeGitHub(tags),
+      this.scrapeHackerNoon(tags),
     ]);
 
-    const newArticles = [...hn, ...devto];
+    const allScraped = [
+      ...hn,
+      ...devto,
+      ...redditProg,
+      ...redditWebdev,
+      ...lobsters,
+      ...hashnode,
+      ...medium,
+      ...techcrunch,
+      ...github,
+      ...hackernoon,
+    ];
+
+    // Deduplicate globally by URL to prevent saving duplicates in the same run
+    const uniqueMap = new Map<string, NewArticle>();
+    for (const art of allScraped) {
+      if (art.url) {
+        uniqueMap.set(art.url, art);
+      }
+    }
+    const uniqueArticles = Array.from(uniqueMap.values());
+    this.logger.log(`Scraped ${uniqueArticles.length} unique articles across 10 sources`);
+
+    // Save articles (deduplicating in DB via onConflictDoNothing)
+    const newArticles = await this.saveArticles(uniqueArticles);
+
+    // Fetch full page content for new articles
     const content = await this.scrapeContentForArticles(newArticles);
 
-    return { hn: hn.length, devto: devto.length, content };
+    // Prune the database to keep only the 50 most recent articles overall
+    await this.cleanOldArticles(50);
+
+    return {
+      hn: hn.length,
+      devto: devto.length,
+      content,
+    };
   }
 
-  async cleanOldArticles(days = 7): Promise<number> {
-    this.logger.log(`Cleaning up articles older than ${days} days...`);
-    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    
+  async cleanOldArticles(limit = 50): Promise<number> {
+    this.logger.log(`Pruning database to keep only the ${limit} most recent articles...`);
+    const recent = await this.db
+      .select({ id: articles.id })
+      .from(articles)
+      .orderBy(desc(articles.createdAt))
+      .limit(limit);
+
+    const recentIds = recent.map((a) => a.id);
+    if (recentIds.length === 0) return 0;
+
     const deleted = await this.db
       .delete(articles)
-      .where(lt(articles.createdAt, cutoff))
+      .where(not(inArray(articles.id, recentIds)))
       .returning({ id: articles.id });
-      
-    this.logger.log(`Cleaned up ${deleted.length} articles older than ${days} days.`);
+
+    this.logger.log(`Pruned ${deleted.length} older articles.`);
     return deleted.length;
   }
 
+  async getUniqueUserInterests(): Promise<string[]> {
+    const rows = await this.db.select({ tags: userInterests.tags }).from(userInterests);
+    const tagsSet = new Set<string>();
+    for (const row of rows) {
+      if (Array.isArray(row.tags)) {
+        for (const tag of row.tags) {
+          const trimmed = tag.trim().toLowerCase();
+          if (trimmed) {
+            tagsSet.add(trimmed);
+          }
+        }
+      }
+    }
 
-  async scrapeHackerNews(): Promise<SavedArticle[]> {
-    this.logger.log('Scraping Hacker News...');
+    const uniqueTags = Array.from(tagsSet);
+    if (uniqueTags.length > 0) {
+      return uniqueTags;
+    }
 
-    const res = await fetch(
-      'https://hn.algolia.com/api/v1/search_by_date?tags=story&hitsPerPage=30',
-    );
-    if (!res.ok) throw new Error(`HN API error: ${res.status}`);
-
-    const data = (await res.json()) as { hits: HNHit[] };
-
-    const rows: NewArticle[] = data.hits
-      .filter((hit) => hit.url)
-      .map((hit) => ({
-        title: hit.title,
-        url: hit.url!,
-        source: 'hn',
-        tags: [], // HN API does not provide tags; only Dev.to articles get tags for now (see feed tag-bonus logic)
-        publishedAt: new Date(hit.created_at),
-      }));
-
-    return this.saveArticles(rows);
+    // Fallback tags (broad tech domains)
+    return ['ai', 'webdev', 'devops', 'security', 'database', 'system-design', 'open-source', 'mobile', 'hardware', 'blockchain'];
   }
 
-  async scrapeDevTo(): Promise<SavedArticle[]> {
-    this.logger.log('Scraping Dev.to...');
+  async scrapeHackerNews(tags: string[]): Promise<NewArticle[]> {
+    this.logger.log(`Scraping Hacker News for tags: ${tags.join(', ')}`);
+    const results = await Promise.all(
+      tags.map(async (tag) => {
+        try {
+          const res = await fetch(
+            `https://hn.algolia.com/api/v1/search_by_date?query=${encodeURIComponent(tag)}&tags=story&hitsPerPage=5`,
+          );
+          if (!res.ok) return [];
+          const data = (await res.json()) as { hits: HNHit[] };
+          return data.hits
+            .filter((hit) => hit.url)
+            .map((hit) => ({
+              title: hit.title,
+              url: hit.url!,
+              source: 'hn',
+              tags: [tag],
+              publishedAt: new Date(hit.created_at),
+            }));
+        } catch (err) {
+          this.logger.warn(`Failed to scrape HN for tag ${tag}: ${err}`);
+          return [];
+        }
+      })
+    );
+    return results.flat();
+  }
 
-    const res = await fetch('https://dev.to/api/articles?top=1&per_page=30', {
-      headers: { 'User-Agent': 'ai-developer-feed/1.0' },
-    });
-    if (!res.ok) throw new Error(`Dev.to API error: ${res.status}`);
+  async scrapeDevTo(tags: string[]): Promise<NewArticle[]> {
+    this.logger.log(`Scraping Dev.to for tags: ${tags.join(', ')}`);
+    const results = await Promise.all(
+      tags.map(async (tag) => {
+        try {
+          const res = await fetch(`https://dev.to/api/articles?tag=${encodeURIComponent(tag)}&per_page=5`, {
+            headers: { 'User-Agent': 'ai-developer-feed/1.0' },
+          });
+          if (!res.ok) return [];
+          const data = (await res.json()) as DevToArticle[];
+          return data.map((article) => ({
+            title: article.title,
+            url: article.url,
+            source: 'devto',
+            tags: article.tag_list ?? [tag],
+            publishedAt: new Date(article.published_at),
+          }));
+        } catch (err) {
+          this.logger.warn(`Failed to scrape Dev.to for tag ${tag}: ${err}`);
+          return [];
+        }
+      })
+    );
+    return results.flat();
+  }
 
-    const data = (await res.json()) as DevToArticle[];
+  async scrapeRedditProgramming(tags: string[]): Promise<NewArticle[]> {
+    this.logger.log(`Scraping Reddit /r/programming for tags: ${tags.join(', ')}`);
+    const results = await Promise.all(
+      tags.map(async (tag) => {
+        try {
+          const res = await fetch(
+            `https://www.reddit.com/r/programming/search.json?q=${encodeURIComponent(tag)}&restrict_sr=1&sort=new&limit=5`,
+            { headers: { 'User-Agent': 'ai-developer-feed/1.0' } }
+          );
+          if (!res.ok) return [];
+          const data = (await res.json()) as any;
+          const children = data?.data?.children ?? [];
+          return children
+            .filter((c: any) => c?.data?.url)
+            .map((c: any) => ({
+              title: c.data.title,
+              url: c.data.url,
+              source: 'reddit_programming',
+              tags: [tag],
+              publishedAt: new Date(c.data.created_utc * 1000),
+            }));
+        } catch (err) {
+          this.logger.warn(`Failed to scrape Reddit /r/programming for tag ${tag}: ${err}`);
+          return [];
+        }
+      })
+    );
+    return results.flat();
+  }
 
-    const rows: NewArticle[] = data.map((article) => ({
-      title: article.title,
-      url: article.url,
-      source: 'devto',
-      tags: article.tag_list ?? [],
-      publishedAt: new Date(article.published_at),
-    }));
+  async scrapeRedditWebdev(tags: string[]): Promise<NewArticle[]> {
+    this.logger.log(`Scraping Reddit /r/webdev for tags: ${tags.join(', ')}`);
+    const results = await Promise.all(
+      tags.map(async (tag) => {
+        try {
+          const res = await fetch(
+            `https://www.reddit.com/r/webdev/search.json?q=${encodeURIComponent(tag)}&restrict_sr=1&sort=new&limit=5`,
+            { headers: { 'User-Agent': 'ai-developer-feed/1.0' } }
+          );
+          if (!res.ok) return [];
+          const data = (await res.json()) as any;
+          const children = data?.data?.children ?? [];
+          return children
+            .filter((c: any) => c?.data?.url)
+            .map((c: any) => ({
+              title: c.data.title,
+              url: c.data.url,
+              source: 'reddit_webdev',
+              tags: [tag],
+              publishedAt: new Date(c.data.created_utc * 1000),
+            }));
+        } catch (err) {
+          this.logger.warn(`Failed to scrape Reddit /r/webdev for tag ${tag}: ${err}`);
+          return [];
+        }
+      })
+    );
+    return results.flat();
+  }
 
-    return this.saveArticles(rows);
+  async scrapeLobsters(tags: string[]): Promise<NewArticle[]> {
+    this.logger.log(`Scraping Lobste.rs for tags: ${tags.join(', ')}`);
+    const results = await Promise.all(
+      tags.map(async (tag) => {
+        try {
+          const res = await fetch(`https://lobste.rs/t/${encodeURIComponent(tag)}.rss`);
+          if (!res.ok) return [];
+          const xml = await res.text();
+          const $ = cheerio.load(xml, { xmlMode: true });
+          const mapped: NewArticle[] = [];
+          $('item').each((_, el) => {
+            if (mapped.length >= 5) return;
+            const title = $(el).find('title').text().trim();
+            const url = $(el).find('link').text().trim();
+            const pubDateText = $(el).find('pubDate').text().trim();
+            if (title && url) {
+              mapped.push({
+                title,
+                url,
+                source: 'lobsters',
+                tags: [tag],
+                publishedAt: pubDateText ? new Date(pubDateText) : new Date(),
+              });
+            }
+          });
+          return mapped;
+        } catch (err) {
+          this.logger.warn(`Failed to scrape Lobste.rs for tag ${tag}: ${err}`);
+          return [];
+        }
+      })
+    );
+    return results.flat();
+  }
+
+  async scrapeHashnode(tags: string[]): Promise<NewArticle[]> {
+    this.logger.log(`Scraping Hashnode for tags: ${tags.join(', ')}`);
+    const results = await Promise.all(
+      tags.map(async (tag) => {
+        try {
+          const res = await fetch(`https://hashnode.com/n/${encodeURIComponent(tag)}/rss`);
+          if (!res.ok) return [];
+          const xml = await res.text();
+          const $ = cheerio.load(xml, { xmlMode: true });
+          const mapped: NewArticle[] = [];
+          $('item').each((_, el) => {
+            if (mapped.length >= 5) return;
+            const title = $(el).find('title').text().trim();
+            const url = $(el).find('link').text().trim();
+            const pubDateText = $(el).find('pubDate').text().trim();
+            if (title && url) {
+              mapped.push({
+                title,
+                url,
+                source: 'hashnode',
+                tags: [tag],
+                publishedAt: pubDateText ? new Date(pubDateText) : new Date(),
+              });
+            }
+          });
+          return mapped;
+        } catch (err) {
+          this.logger.warn(`Failed to scrape Hashnode for tag ${tag}: ${err}`);
+          return [];
+        }
+      })
+    );
+    return results.flat();
+  }
+
+  async scrapeMedium(tags: string[]): Promise<NewArticle[]> {
+    this.logger.log(`Scraping Medium for tags: ${tags.join(', ')}`);
+    const results = await Promise.all(
+      tags.map(async (tag) => {
+        try {
+          const res = await fetch(`https://medium.com/feed/tag/${encodeURIComponent(tag)}`);
+          if (!res.ok) return [];
+          const xml = await res.text();
+          const $ = cheerio.load(xml, { xmlMode: true });
+          const mapped: NewArticle[] = [];
+          $('item').each((_, el) => {
+            if (mapped.length >= 5) return;
+            const title = $(el).find('title').text().trim();
+            const url = $(el).find('link').text().trim();
+            const pubDateText = $(el).find('pubDate').text().trim();
+            if (title && url) {
+              mapped.push({
+                title,
+                url,
+                source: 'medium',
+                tags: [tag],
+                publishedAt: pubDateText ? new Date(pubDateText) : new Date(),
+              });
+            }
+          });
+          return mapped;
+        } catch (err) {
+          this.logger.warn(`Failed to scrape Medium for tag ${tag}: ${err}`);
+          return [];
+        }
+      })
+    );
+    return results.flat();
+  }
+
+  async scrapeTechCrunch(tags: string[]): Promise<NewArticle[]> {
+    this.logger.log(`Scraping TechCrunch for tags: ${tags.join(', ')}`);
+    const results = await Promise.all(
+      tags.map(async (tag) => {
+        try {
+          const res = await fetch(
+            `https://techcrunch.com/wp-json/wp/v2/posts?search=${encodeURIComponent(tag)}&per_page=5`,
+          );
+          if (!res.ok) return [];
+          const data = (await res.json()) as any[];
+          return data.map((post) => ({
+            title: post?.title?.rendered ?? '',
+            url: post?.link ?? '',
+            source: 'techcrunch',
+            tags: [tag],
+            publishedAt: post?.date ? new Date(post.date) : new Date(),
+          }));
+        } catch (err) {
+          this.logger.warn(`Failed to scrape TechCrunch for tag ${tag}: ${err}`);
+          return [];
+        }
+      })
+    );
+    return results.flat();
+  }
+
+  async scrapeGitHub(tags: string[]): Promise<NewArticle[]> {
+    this.logger.log(`Scraping GitHub for tags: ${tags.join(', ')}`);
+    const results = await Promise.all(
+      tags.map(async (tag) => {
+        try {
+          const res = await fetch(
+            `https://api.github.com/search/repositories?q=${encodeURIComponent(tag)}&sort=stars&order=desc&per_page=5`,
+            { headers: { 'User-Agent': 'ai-developer-feed/1.0' } }
+          );
+          if (!res.ok) return [];
+          const data = (await res.json()) as any;
+          const items = data?.items ?? [];
+          return items.map((item: any) => ({
+            title: `${item.full_name}: ${item.description || ''}`,
+            url: item.html_url,
+            source: 'github',
+            tags: [tag],
+            publishedAt: item.created_at ? new Date(item.created_at) : new Date(),
+          }));
+        } catch (err) {
+          this.logger.warn(`Failed to scrape GitHub for tag ${tag}: ${err}`);
+          return [];
+        }
+      })
+    );
+    return results.flat();
+  }
+
+  async scrapeHackerNoon(tags: string[]): Promise<NewArticle[]> {
+    this.logger.log(`Scraping HackerNoon for tags: ${tags.join(', ')}`);
+    const results = await Promise.all(
+      tags.map(async (tag) => {
+        try {
+          const res = await fetch(`https://hackernoon.com/feed/tag/${encodeURIComponent(tag)}`);
+          if (!res.ok) return [];
+          const xml = await res.text();
+          const $ = cheerio.load(xml, { xmlMode: true });
+          const mapped: NewArticle[] = [];
+          $('item').each((_, el) => {
+            if (mapped.length >= 5) return;
+            const title = $(el).find('title').text().trim();
+            const url = $(el).find('link').text().trim();
+            const pubDateText = $(el).find('pubDate').text().trim();
+            if (title && url) {
+              mapped.push({
+                title,
+                url,
+                source: 'hackernoon',
+                tags: [tag],
+                publishedAt: pubDateText ? new Date(pubDateText) : new Date(),
+              });
+            }
+          });
+          return mapped;
+        } catch (err) {
+          this.logger.warn(`Failed to scrape HackerNoon for tag ${tag}: ${err}`);
+          return [];
+        }
+      })
+    );
+    return results.flat();
   }
 
   private async saveArticles(rows: NewArticle[]): Promise<SavedArticle[]> {

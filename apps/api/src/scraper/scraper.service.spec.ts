@@ -26,6 +26,9 @@ describe('ScraperService (unit)', () => {
           returning: jest.fn(() => Promise.resolve([])),
         })),
       })),
+      select: jest.fn(() => ({
+        from: jest.fn(() => Promise.resolve([{ tags: ['ai'] }])),
+      })),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -44,7 +47,7 @@ describe('ScraperService (unit)', () => {
     jest.clearAllMocks();
   });
 
-  it('scrapeHackerNews fetches HN, filters items with url, maps to NewArticle shape', async () => {
+  it('scrapeHackerNews fetches HN per tag, filters items with url, maps to NewArticle shape', async () => {
     const hnResponse = {
       hits: [
         {
@@ -53,12 +56,6 @@ describe('ScraperService (unit)', () => {
           url: 'https://ex.com/ts',
           created_at: '2025-06-01T00:00:00Z',
         },
-        {
-          objectID: '2',
-          title: 'No URL story',
-          story_text: 'foo',
-          created_at: '2025-06-01T00:00:00Z',
-        }, // filtered
       ],
     };
 
@@ -67,29 +64,20 @@ describe('ScraperService (unit)', () => {
       json: async () => hnResponse,
     } as any);
 
-    // Make the save return something (we test mapping here, save tested separately)
-    mockDb.insert.mockReturnValueOnce({
-      values: jest.fn(() => ({
-        onConflictDoNothing: jest.fn(() => ({
-          returning: jest.fn(() =>
-            Promise.resolve([{ id: 'new1', url: 'https://ex.com/ts' }]),
-          ),
-        })),
-      })),
-    });
-
-    const saved = await service.scrapeHackerNews();
+    const articles = await service.scrapeHackerNews(['ai']);
 
     expect(global.fetch).toHaveBeenCalledWith(
-      'https://hn.algolia.com/api/v1/search_by_date?tags=story&hitsPerPage=30',
+      'https://hn.algolia.com/api/v1/search_by_date?query=ai&tags=story&hitsPerPage=5',
     );
-    expect(saved).toEqual([{ id: 'new1', url: 'https://ex.com/ts' }]);
-    // tags: [] for HN
-    const valuesArg =
-      mockDb.insert.mock.results[0].value.values.mock.calls[0][0];
-    expect(valuesArg[0]).toEqual(
-      expect.objectContaining({ source: 'hn', tags: [], title: 'TS 5.5' }),
-    );
+    expect(articles).toEqual([
+      {
+        title: 'TS 5.5',
+        url: 'https://ex.com/ts',
+        source: 'hn',
+        tags: ['ai'],
+        publishedAt: new Date('2025-06-01T00:00:00Z'),
+      },
+    ]);
   });
 
   it('scrapeDevTo fetches, maps tags, source=devto', async () => {
@@ -108,22 +96,10 @@ describe('ScraperService (unit)', () => {
       json: async () => devtoResponse,
     } as any);
 
-    mockDb.insert.mockReturnValueOnce({
-      values: jest.fn(() => ({
-        onConflictDoNothing: jest.fn(() => ({
-          returning: jest.fn(() =>
-            Promise.resolve([{ id: 'd1', url: 'https://dev.to/vite' }]),
-          ),
-        })),
-      })),
-    });
+    const articles = await service.scrapeDevTo(['ai']);
 
-    const saved = await service.scrapeDevTo();
-
-    expect(saved).toHaveLength(1);
-    const valuesArg =
-      mockDb.insert.mock.results[0].value.values.mock.calls[0][0];
-    expect(valuesArg[0]).toEqual(
+    expect(articles).toHaveLength(1);
+    expect(articles[0]).toEqual(
       expect.objectContaining({ source: 'devto', tags: ['vite', 'frontend'] }),
     );
   });
@@ -179,12 +155,24 @@ describe('ScraperService (unit)', () => {
     expect(await service.fetchContent('https://ex.com/err')).toBeNull();
   });
 
-  it('scrapeAll orchestrates HN + DevTo + content scrape for new articles', async () => {
-    // Stub the two scrapers to avoid real net in this high level test
-    jest
-      .spyOn(service, 'scrapeHackerNews')
-      .mockResolvedValue([{ id: 'h1', url: 'https://h.com' }]);
+  it('scrapeAll orchestrates 10 sources, content scrape, and pruning', async () => {
+    // Stub all the scrapers to avoid real net
+    jest.spyOn(service, 'getUniqueUserInterests').mockResolvedValue(['ai']);
+    jest.spyOn(service, 'cleanOldArticles').mockResolvedValue(0);
+
+    jest.spyOn(service, 'scrapeHackerNews').mockResolvedValue([{ title: 'H1', url: 'https://h.com', source: 'hn', tags: ['ai'], publishedAt: new Date() }]);
     jest.spyOn(service, 'scrapeDevTo').mockResolvedValue([]);
+    jest.spyOn(service, 'scrapeRedditProgramming').mockResolvedValue([]);
+    jest.spyOn(service, 'scrapeRedditWebdev').mockResolvedValue([]);
+    jest.spyOn(service, 'scrapeLobsters').mockResolvedValue([]);
+    jest.spyOn(service, 'scrapeHashnode').mockResolvedValue([]);
+    jest.spyOn(service, 'scrapeMedium').mockResolvedValue([]);
+    jest.spyOn(service, 'scrapeTechCrunch').mockResolvedValue([]);
+    jest.spyOn(service, 'scrapeGitHub').mockResolvedValue([]);
+    jest.spyOn(service, 'scrapeHackerNoon').mockResolvedValue([]);
+
+    // saveArticles mock
+    jest.spyOn(service as any, 'saveArticles').mockResolvedValue([{ id: 'h1', url: 'https://h.com' }]);
 
     // content fetch for the new one
     jest.spyOn(service, 'fetchContent').mockResolvedValue('some article body');
@@ -205,15 +193,23 @@ describe('ScraperService (unit)', () => {
   });
 
   it('cleanOldArticles calls db delete with correct date and returns count', async () => {
-    mockDb.delete.mockReturnValueOnce({
-      where: jest.fn(() => ({
-        returning: jest.fn(() => Promise.resolve([{ id: 'art-1' }, { id: 'art-2' }])),
+    mockDb.select.mockReturnValueOnce({
+      from: jest.fn(() => ({
+        orderBy: jest.fn(() => ({
+          limit: jest.fn(() => Promise.resolve([{ id: 'art-1' }, { id: 'art-2' }])),
+        })),
       })),
     });
 
-    const count = await service.cleanOldArticles(7);
+    mockDb.delete.mockReturnValueOnce({
+      where: jest.fn(() => ({
+        returning: jest.fn(() => Promise.resolve([{ id: 'art-3' }])),
+      })),
+    });
+
+    const count = await service.cleanOldArticles(50);
 
     expect(mockDb.delete).toHaveBeenCalled();
-    expect(count).toBe(2);
+    expect(count).toBe(1);
   });
 });

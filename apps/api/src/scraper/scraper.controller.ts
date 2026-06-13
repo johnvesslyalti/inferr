@@ -19,7 +19,7 @@ export class ScraperController {
   }> {
     const saved = await this.scraperService.scrapeAll();
     const summarized = await this.aiService.processUnsummarized(50);
-    const cleaned = await this.scraperService.cleanOldArticles(7);
+    const cleaned = await this.scraperService.cleanOldArticles(50);
     return { saved, summarized, cleaned };
   }
 }
