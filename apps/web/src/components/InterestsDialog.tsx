@@ -7,34 +7,24 @@ import styles from './InterestsDialog.module.css';
 
 const CATEGORIES = [
   {
-    name: 'Languages',
-    icon: '💻',
-    tags: ['TypeScript', 'JavaScript', 'Python', 'Go', 'Rust'],
-  },
-  {
-    name: 'Frameworks & Runtimes',
-    icon: '⚡',
-    tags: ['React', 'Next.js', 'Node.js', 'NestJS'],
-  },
-  {
-    name: 'Databases & Storage',
-    icon: '🗄️',
-    tags: ['PostgreSQL', 'Redis'],
-  },
-  {
-    name: 'AI / ML & Intelligent Systems',
+    name: 'Artificial Intelligence',
     icon: '🧠',
-    tags: ['AI / ML', 'LLMs', 'RAG'],
+    tags: ['AI / ML'],
   },
   {
-    name: 'DevOps & Cloud Infrastructure',
+    name: 'Application Development',
+    icon: '💻',
+    tags: ['Web Development', 'Mobile Development', 'Open Source'],
+  },
+  {
+    name: 'Infrastructure & Databases',
     icon: '☁️',
-    tags: ['Docker', 'Kubernetes', 'AWS', 'DevOps'],
+    tags: ['DevOps', 'Security', 'Databases'],
   },
   {
-    name: 'Architecture & Security',
+    name: 'Systems & Emerging Tech',
     icon: '📐',
-    tags: ['System Design', 'Security'],
+    tags: ['System Design', 'Hardware', 'Blockchain'],
   },
 ];
 

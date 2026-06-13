@@ -11,6 +11,7 @@ export interface FeedArticle {
   summary: string | null;
   url: string;
   source: string;
+  publishedAt: string | null;
 }
 
 export interface FeedResponse {
@@ -82,11 +83,12 @@ export class FeedService {
       source: string;
       summary: string | null;
       created_at: string;
+      published_at: string | null;
       tags: string[];
       cosine_distance: string;
     }>(
       sql`
-        SELECT id, title, url, source, summary, created_at, tags,
+        SELECT id, title, url, source, summary, created_at, published_at, tags,
           (embedding <=> ${embeddingStr}::vector) AS cosine_distance
         FROM articles
         WHERE embedding IS NOT NULL
@@ -117,6 +119,7 @@ export class FeedService {
         url: r.url,
         source: r.source,
         createdAt: r.created_at ? new Date(r.created_at) : new Date(0),
+        publishedAt: r.published_at ? new Date(r.published_at) : null,
         distance,
       };
     });
@@ -205,6 +208,15 @@ function toFeedArticle(a: {
   summary: string | null;
   url: string;
   source: string;
+  publishedAt?: Date | null;
+  createdAt?: Date | null;
 }): FeedArticle {
-  return { title: a.title, summary: a.summary, url: a.url, source: a.source };
+  const date = a.publishedAt || a.createdAt || null;
+  return {
+    title: a.title,
+    summary: a.summary,
+    url: a.url,
+    source: a.source,
+    publishedAt: date ? date.toISOString() : null,
+  };
 }

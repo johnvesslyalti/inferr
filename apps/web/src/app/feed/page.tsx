@@ -13,6 +13,7 @@ interface Article {
   summary: string | null;
   url: string;
   source: string;
+  publishedAt: string | null;
 }
 
 interface FeedResponse {
@@ -24,6 +25,14 @@ interface FeedResponse {
 const SOURCE_LABEL: Record<string, string> = {
   hn: 'Hacker News',
   devto: 'Dev.to',
+  reddit_programming: 'r/programming',
+  reddit_webdev: 'r/webdev',
+  lobsters: 'Lobsters',
+  hashnode: 'Hashnode',
+  medium: 'Medium',
+  techcrunch: 'TechCrunch',
+  github: 'GitHub',
+  hackernoon: 'HackerNoon',
 };
 
 const MAX_FEED_ARTICLES = 5;
@@ -66,6 +75,20 @@ const SCORES = ['98%', '95%', '91%', '88%', '84%'];
 function ArticleCard({ article, index }: { article: Article; index: number }) {
   const score = SCORES[index % SCORES.length];
 
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return null;
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch {
+      return null;
+    }
+  };
+
   // Helper to format the 3-line summaries into clean points
   const formatSummary = (summary: string | null) => {
     if (!summary) return null;
@@ -94,9 +117,14 @@ function ArticleCard({ article, index }: { article: Article; index: number }) {
   return (
     <article className={styles.card}>
       <div className={styles.cardTop}>
-        <span className={`${styles.badge} ${styles[`badge_${article.source}`]}`}>
-          {SOURCE_LABEL[article.source] ?? article.source}
-        </span>
+        <div className={styles.badgeContainer}>
+          <span className={`${styles.badge} ${styles[`badge_${article.source}`]}`}>
+            {SOURCE_LABEL[article.source] ?? article.source}
+          </span>
+          {article.publishedAt && (
+            <span className={styles.dateText}>{formatDate(article.publishedAt)}</span>
+          )}
+        </div>
         <span className={styles.matchScore}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={styles.matchIcon}>
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
@@ -121,7 +149,7 @@ function ArticleCard({ article, index }: { article: Article; index: number }) {
 
 export default function FeedPage() {
   const router = useRouter();
-  const { token, ready } = useAuth();
+  const { token, ready, user } = useAuth();
   const authFetch = useAuthFetch();
   const [feed, setFeed] = useState<FeedResponse>(EMPTY_FEED);
   const [loading, setLoading] = useState(true);
@@ -196,12 +224,16 @@ export default function FeedPage() {
       router.push('/');
       return;
     }
+    if (user && !user.hasInterests) {
+      router.push('/onboarding');
+      return;
+    }
 
     const controller = new AbortController();
     // eslint-disable-next-line react-hooks/set-state-in-effect
     revalidate(controller.signal);
     return () => controller.abort();
-  }, [revalidate, router, token, ready, refetchKey]);
+  }, [revalidate, router, token, ready, user, refetchKey]);
 
   const isEmpty = !loading && !error &&
     (feed?.articles?.length ?? 0) === 0 &&

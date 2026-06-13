@@ -6,7 +6,8 @@ export class LoggerMiddleware implements NestMiddleware {
   private readonly logger = new Logger('HTTP');
 
   use(req: Request, res: Response, next: NextFunction) {
-    const { method, url } = req;
+    const method = req.method;
+    const path = req.originalUrl || req.url;
     const start = Date.now();
 
     res.on('finish', () => {
@@ -14,7 +15,7 @@ export class LoggerMiddleware implements NestMiddleware {
       const { statusCode } = res;
       const level =
         statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'log';
-      this.logger[level](`${method} ${url} ${statusCode} +${ms}ms`);
+      this.logger[level](`${method} ${path} ${statusCode} +${ms}ms`);
     });
 
     next();
