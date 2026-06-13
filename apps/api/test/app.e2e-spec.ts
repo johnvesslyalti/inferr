@@ -82,6 +82,7 @@ describe('API E2E (isolated modules)', () => {
 
       scraperService = {
         scrapeAll: jest.fn(),
+        cleanOldArticles: jest.fn(),
       } as any;
 
       aiService = {
@@ -131,6 +132,7 @@ describe('API E2E (isolated modules)', () => {
 
       const scrapeRes: ScrapeResult = { hn: 10, devto: 5, content: { saved: 12, skipped: 3 } };
       scraperService.scrapeAll.mockResolvedValue(scrapeRes);
+      scraperService.cleanOldArticles.mockResolvedValue(4);
       (aiService.processUnsummarized as jest.Mock).mockResolvedValue({ processed: 8, failed: 1 });
 
       await request(app.getHttpServer())
@@ -140,6 +142,7 @@ describe('API E2E (isolated modules)', () => {
         .expect((r) => {
           expect(r.body.saved.hn).toBe(10);
           expect(r.body.summarized.processed).toBe(8);
+          expect(r.body.cleaned).toBe(4);
         });
 
       // bad key
