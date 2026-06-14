@@ -20,16 +20,17 @@ Personalized developer news feed powered by AI. Sign in with Google, pick intere
 
 ```mermaid
 graph TD
-    subgraph Client ["Client Layer"]
+    subgraph ClientSubgraph ["Client Layer"]
         UserBrowser["User Browser (Next.js 15)"]
         McpClient["MCP Client (e.g., Claude Desktop)"]
     end
 
-    subgraph Web ["Web Frontend (apps/web)"]
+    subgraph WebSubgraph ["Web Frontend (apps/web)"]
         NextJS["Next.js App"]
     end
 
-    subgraph API ["NestJS API (apps/api)"]
+    subgraph APISubgraph ["NestJS API (apps/api)"]
+        AppCtrl["App Controller<br/>(Health Check)"]
         AuthMod["Auth Module<br/>(Google OAuth 2.0, JWT)"]
         FeedMod["Feed Module<br/>(Personalized feed)"]
         ChatMod["Chat Module<br/>(LangGraph RAG)"]
@@ -38,7 +39,7 @@ graph TD
         McpMod["MCP Module<br/>(SSE & Tools)"]
     end
 
-    subgraph DB ["Database Layer (PostgreSQL)"]
+    subgraph DBSubgraph ["Database Layer (PostgreSQL)"]
         Postgres[(PostgreSQL + pgvector)]
         UsersT[(users / user_interests)]
         ArticlesT[(articles / embeddings)]
@@ -46,7 +47,7 @@ graph TD
         McpT[(mcp_tokens / mcp_clients)]
     end
 
-    subgraph External ["External Services"]
+    subgraph ExternalSubgraph ["External Services"]
         GoogleOAuth["Google OAuth 2.0"]
         OpenAI["OpenAI API<br/>(gpt-4o-mini / text-embedding-3-small)"]
         NewsAPIs["Hacker News & Dev.to APIs"]
@@ -57,16 +58,13 @@ graph TD
 
     %% Connections
     UserBrowser -->|UI Interactions| NextJS
-    NextJS -->|REST API (JWT)| API
+    
+    NextJS -->|Authenticate| AuthMod
+    NextJS -->|Fetch Feed| FeedMod
+    NextJS -->|Query Chat| ChatMod
+    NextJS -->|View Jobs| JobsMod
+    
     McpClient -->|SSE Connection & Tool Calls| McpMod
-
-    %% NestJS API mapping
-    API --> AuthMod
-    API --> FeedMod
-    API --> ChatMod
-    API --> ScraperMod
-    API --> JobsMod
-    API --> McpMod
 
     %% Module flows
     AuthMod -->|OAuth Consent| GoogleOAuth
@@ -97,7 +95,7 @@ graph TD
 
     %% External cron jobs
     GithubActions -->|Trigger Pipeline| ScraperMod
-    CronJob -->|Ping /health| API
+    CronJob -->|Ping /health| AppCtrl
 
     %% Styling
     classDef client fill:#EBF5FF,stroke:#2563EB,stroke-width:2px,color:#1E3A8A;
@@ -108,7 +106,7 @@ graph TD
 
     class UserBrowser,McpClient client;
     class NextJS web;
-    class AuthMod,FeedMod,ChatMod,ScraperMod,JobsMod,McpMod api;
+    class AppCtrl,AuthMod,FeedMod,ChatMod,ScraperMod,JobsMod,McpMod api;
     class Postgres,UsersT,ArticlesT,JobsT,McpT db;
     class GoogleOAuth,OpenAI,NewsAPIs,Cheerio,GithubActions,CronJob external;
 ```
