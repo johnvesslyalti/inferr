@@ -104,6 +104,7 @@ export const userInterests = pgTable('user_interests', {
     .primaryKey()
     .references(() => users.id, { onDelete: 'cascade' }),
   tags: text('tags').array().notNull().default([]),
+  queryEmbedding: vector('query_embedding', 1536),
 });
 
 export const jobs = pgTable(

@@ -31,6 +31,7 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   refreshToken: () => Promise<string | null>;
   rescheduleProactiveRefresh: (token: string) => void;
+  refetchProfile: () => Promise<AuthUser | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -146,8 +147,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setTokenState(null);
   }, []);
 
+  const refetchProfile = useCallback(async (): Promise<AuthUser | null> => {
+    if (!token) return null;
+    profileFetchActiveRef.current = true;
+    try {
+      const res = await apiFetch(`${API_BASE}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const u = await res.json() as AuthUser;
+        if (profileFetchActiveRef.current) {
+          setUser(u);
+          return u;
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, [token]);
+
   return (
-    <AuthContext.Provider value={{ token, user, ready, setToken, signOut, refreshToken, rescheduleProactiveRefresh }}>
+    <AuthContext.Provider value={{ token, user, ready, setToken, signOut, refreshToken, rescheduleProactiveRefresh, refetchProfile }}>
 
       {children}
     </AuthContext.Provider>

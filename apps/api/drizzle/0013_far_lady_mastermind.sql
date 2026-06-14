@@ -1,0 +1,1 @@
+ALTER TABLE "user_interests" ADD COLUMN "query_embedding" vector(1536);

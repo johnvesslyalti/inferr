@@ -58,12 +58,16 @@ export class FeedService {
 
   async getPersonalizedFeed(userId: string): Promise<FeedResponse> {
     const interestRow = await this.db
-      .select({ tags: userInterests.tags })
+      .select({
+        tags: userInterests.tags,
+        queryEmbedding: userInterests.queryEmbedding,
+      })
       .from(userInterests)
       .where(eq(userInterests.userId, userId))
       .limit(1);
 
     const tags = interestRow[0]?.tags ?? [];
+    const cachedEmbedding = interestRow[0]?.queryEmbedding;
 
     // Richer query text gives the embedding model more context than bare keywords
     const queryText =
@@ -71,9 +75,23 @@ export class FeedService {
         ? `software engineering articles about ${tags.join(', ')} for developers`
         : 'software development programming tutorials';
 
-    this.logger.log(`Building feed for user ${userId} | query: "${queryText}"`);
+    let embedding: number[];
+    if (cachedEmbedding && cachedEmbedding.length > 0) {
+      this.logger.log(`Using cached embedding for user ${userId}`);
+      embedding = cachedEmbedding;
+    } else {
+      this.logger.log(
+        `Generating embedding for user ${userId} | query: "${queryText}"`,
+      );
+      embedding = await this.aiService.embed(queryText);
+      if (interestRow.length > 0) {
+        await this.db
+          .update(userInterests)
+          .set({ queryEmbedding: embedding })
+          .where(eq(userInterests.userId, userId));
+      }
+    }
 
-    const embedding = await this.aiService.embed(queryText);
     const embeddingStr = `[${embedding.join(',')}]`;
 
     const rows = await this.db.execute<{
@@ -156,18 +174,38 @@ export class FeedService {
 
   async getDebugFeed(userId: string): Promise<DebugFeedResponse> {
     const interestRow = await this.db
-      .select({ tags: userInterests.tags })
+      .select({
+        tags: userInterests.tags,
+        queryEmbedding: userInterests.queryEmbedding,
+      })
       .from(userInterests)
       .where(eq(userInterests.userId, userId))
       .limit(1);
 
     const tags = interestRow[0]?.tags ?? [];
+    const cachedEmbedding = interestRow[0]?.queryEmbedding;
     const queryText =
       tags.length > 0
         ? `software engineering articles about ${tags.join(', ')} for developers`
         : 'software development programming tutorials';
 
-    const embedding = await this.aiService.embed(queryText);
+    let embedding: number[];
+    if (cachedEmbedding && cachedEmbedding.length > 0) {
+      this.logger.log(`Using cached embedding for user ${userId} (debug)`);
+      embedding = cachedEmbedding;
+    } else {
+      this.logger.log(
+        `Generating embedding for user ${userId} (debug) | query: "${queryText}"`,
+      );
+      embedding = await this.aiService.embed(queryText);
+      if (interestRow.length > 0) {
+        await this.db
+          .update(userInterests)
+          .set({ queryEmbedding: embedding })
+          .where(eq(userInterests.userId, userId));
+      }
+    }
+
     const embeddingStr = `[${embedding.join(',')}]`;
 
     const rows = await this.db.execute<{
