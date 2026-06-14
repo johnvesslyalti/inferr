@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/src/lib/auth-context';
+import { McpDialog } from './McpDialog';
 import styles from './ProfileMenu.module.css';
 
 interface ProfileMenuProps {
@@ -18,6 +19,7 @@ export function ProfileMenu({ onEditInterests }: ProfileMenuProps = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [showMcp, setShowMcp] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   // Close on outside click
@@ -141,6 +143,23 @@ export function ProfileMenu({ onEditInterests }: ProfileMenuProps = {}) {
             Account & Status
           </Link>
 
+          {/* Connect to Claude/MCP */}
+          <button
+            className={`${styles.item} ${styles.itemButton}`}
+            onClick={() => {
+              setOpen(false);
+              setShowMcp(true);
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.itemIcon}>
+              <rect x="2" y="8" width="14" height="8" rx="2" ry="2" />
+              <path d="M18 8h1a4 4 0 0 1 0 8h-1" />
+              <line x1="6" y1="2" x2="6" y2="8" />
+              <line x1="12" y1="2" x2="12" y2="8" />
+            </svg>
+            Connect to Claude (MCP)
+          </button>
+
           {/* Edit Interests */}
           {onEditInterests ? (
             <button
@@ -179,6 +198,7 @@ export function ProfileMenu({ onEditInterests }: ProfileMenuProps = {}) {
           </button>
         </div>
       )}
+      {showMcp && <McpDialog onClose={() => setShowMcp(false)} />}
     </div>
   );
 }
