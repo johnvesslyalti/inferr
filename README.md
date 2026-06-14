@@ -85,7 +85,7 @@ pnpm db:studio     # Drizzle Studio at https://local.drizzle.studio
 
 Migrations run automatically on API startup in production.
 
-**Schema tables:** `users`, `articles`, `user_interests`, `document_embeddings`, `refresh_tokens`
+**Schema tables:** `users`, `articles`, `refresh_tokens`, `mcp_tokens`, `user_interests`, `jobs`, `market_reports`, `ai_evaluations`, `mcp_clients`, `pending_mcp_authorizations`, `pending_auth_codes`
 
 ## Ingestion Pipeline
 
@@ -211,10 +211,19 @@ POST /auth/logout → revoke refresh token, clear cookie
 | POST | `/auth/refresh` | cookie | Rotate refresh token → return JWT access token |
 | POST | `/auth/logout` | cookie | Revoke refresh token, clear cookie |
 | GET | `/auth/me` | Bearer JWT | Current user + hasInterests flag |
+| GET | `/users/interests` | Bearer JWT | Get saved interest tags |
 | POST | `/users/interests` | Bearer JWT | Save interest tags |
+| DELETE | `/users/me` | Bearer JWT | Delete user account and cascade-delete all personal data |
 | GET | `/feed` | Bearer JWT | Personalized article feed with relevance filtering |
 | POST | `/chat` | Bearer JWT | Agentic RAG chat (supports conversation history) |
 | POST | `/scraper/run` | `SCRAPER_API_KEY` | Run full pipeline: scrape → content → summarize |
+| GET | `/jobs/market` | — | Fetch job demand stats |
+| GET | `/jobs/report` | — | Fetch market reports |
+| POST | `/jobs/scrape` | `SCRAPER_API_KEY` | Scrape latest jobs |
+| POST | `/mcp` | Bearer Token | Handle Model Context Protocol (MCP) tool call request |
+| GET | `/mcp` | Bearer Token | Handle Model Context Protocol (MCP) SSE stream request |
+| DELETE | `/mcp` | Bearer Token | Handle Model Context Protocol (MCP) close session request |
+
 
 ## Deployment
 

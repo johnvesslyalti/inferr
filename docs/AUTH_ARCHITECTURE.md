@@ -133,6 +133,35 @@ User clicks "Sign Out"
 
 ---
 
+## Flow E — Account Deletion
+
+```
+Browser                                              NestJS API (3001)
+──────────                                           ─────────────────
+User clicks "Yes, Delete My Account"
+  │
+  setIsDeleting(true)
+  │
+  ├── DELETE /users/me ───────────────────────────────► JwtAuthGuard verifies JWT
+  │   Authorization: Bearer <JWT>                       deleteUser(userId):
+  │                                                       cascade-delete:
+  │                                                         - users
+  │                                                         - refresh_tokens
+  │                                                         - mcp_tokens
+  │                                                         - user_interests
+  │                                                         - pending_auth_codes
+  │                                                       set null:
+  │                                                         - ai_evaluations (anonymized)
+  │◄───────────────────────────────────────────────── { ok: true }
+  │
+  ├── await signOut():
+  │     POST /auth/logout (clears local state, cookies)
+  │
+  └── window.location.href = '/' (full-page reload to wipe state)
+```
+
+---
+
 ## Multi-Tab Race Condition (Reuse Detection)
 
 When two tabs both hold refresh token `R1` and both try to refresh at the same time:
@@ -171,6 +200,7 @@ The grace window is 5 seconds. Outside it, a reuse attempt is treated as a stole
 | `POST /auth/refresh` | `ThrottlerGuard` (10/min) | httpOnly refresh cookie | Rotates refresh token, returns new JWT |
 | `GET /auth/me` | `JwtAuthGuard` | `Authorization: Bearer <JWT>` | Returns user profile + `hasInterests` flag |
 | `POST /auth/logout` | — | httpOnly refresh cookie | Revokes token in DB, clears cookie |
+| `DELETE /users/me` | `JwtAuthGuard` | `Authorization: Bearer <JWT>` | Deletes user row from DB and cascade-deletes all associated sessions, tokens, and interests |
 
 All other protected routes (`/feed/*`, `/users/interests`, `/ai/*`, `/chat/*`) use `JwtAuthGuard`.
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { AlertTriangle } from 'lucide-react';
 import { useAuth, useAuthFetch, API_BASE } from '@/src/lib/auth-context';
 import { Navbar } from '@/src/components/Navbar';
 import { InterestsDialog } from '@/src/components/InterestsDialog';
@@ -40,12 +41,33 @@ const features = [
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { token, ready } = useAuth();
+  const { token, ready, signOut } = useAuth();
   const authFetch = useAuthFetch();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInterests, setShowInterests] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await authFetch(`${API_BASE}/users/me`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        throw new Error('Failed to delete account. Please try again.');
+      }
+      await signOut();
+      window.location.href = '/';
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'An error occurred');
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     if (!ready) return;
@@ -178,6 +200,68 @@ export default function DashboardPage() {
                 <p className={styles.featureDesc}>{f.desc}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* Danger Zone */}
+        <section className={styles.dangerZone}>
+          <p className={styles.sectionLabel}>{`// Danger Zone`}</p>
+          <div className={styles.dangerCard}>
+            <div className={styles.dangerHeader}>
+              <AlertTriangle className={styles.dangerIcon} size={20} />
+              <h2 className={styles.dangerTitle}>Delete Account</h2>
+            </div>
+            <p className={styles.dangerText}>
+              Once you delete your account, there is no going back. All your feeds, interests, 
+              and MCP sessions will be permanently erased.
+            </p>
+            
+            {deleteError && (
+              <p className={styles.errorMsg} style={{ marginBottom: '1rem', textAlign: 'left' }}>
+                {deleteError}
+              </p>
+            )}
+
+            {!confirmDelete ? (
+              <button 
+                onClick={() => setConfirmDelete(true)} 
+                className={styles.deleteBtn}
+              >
+                Delete Account
+              </button>
+            ) : (
+              <div className={styles.confirmBox}>
+                <p className={styles.confirmText}>
+                  Are you absolutely sure you want to delete your account? This action cannot be undone.
+                </p>
+                <div className={styles.dangerActions}>
+                  <button 
+                    onClick={handleDeleteAccount} 
+                    className={styles.confirmBtn}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <>
+                        <span className={styles.btnSpinner} />
+                        Deleting...
+                      </>
+                    ) : (
+                      'Yes, Delete My Account'
+                    )}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setConfirmDelete(false);
+                      setDeleteError(null);
+                    }} 
+                    className={styles.cancelBtn}
+                    disabled={isDeleting}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 

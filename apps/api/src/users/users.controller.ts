@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UsersService } from './users.service';
@@ -20,6 +20,14 @@ export class UsersController {
   async saveInterests(@Req() req: Request, @Body() body: { tags: string[] }) {
     const user = req.user as User;
     await this.usersService.saveInterests(user.id, body.tags ?? []);
+    return { ok: true };
+  }
+
+  @Delete('me')
+  @UseGuards(JwtAuthGuard)
+  async deleteAccount(@Req() req: Request) {
+    const user = req.user as User;
+    await this.usersService.deleteUser(user.id);
     return { ok: true };
   }
 }

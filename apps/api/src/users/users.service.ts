@@ -88,4 +88,8 @@ export class UsersService {
       .limit(1);
     return (result[0]?.tags?.length ?? 0) > 0;
   }
+
+  async deleteUser(userId: string): Promise<void> {
+    await this.db.delete(users).where(eq(users.id, userId));
+  }
 }

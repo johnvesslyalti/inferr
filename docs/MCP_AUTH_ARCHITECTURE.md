@@ -113,3 +113,9 @@ sequenceDiagram
 - **One-Way Token Hashing**: Raw refresh tokens are never written to disk. Only `SHA-256(raw_refresh_token)` is stored. If an attacker reads the database, they cannot use the hash to authenticate.
 - **Refresh Token Rotation (RTR)**: Every time a refresh token is used to get a new access token, the old refresh token is marked as `revoked: true` and linked to the new token via `replaced_by_hash`.
 - **Automatic Replay Attack Detection**: If a client attempts to reuse a revoked refresh token, the server immediately assumes the token has been stolen. The server **revokes the entire token chain** for that user, invalidating all sessions and forcing the user to log in again.
+
+### 🗑️ Cascade Deletion on Account Removal
+
+The `mcp_tokens` and `pending_auth_codes` tables are defined with foreign key references to `users.id` using `onDelete: 'cascade'`. 
+When a user permanently deletes their web account (via `DELETE /users/me`), PostgreSQL automatically cascades the deletion to remove all of their active MCP tokens, pending authorization states, and codes. Connected MCP clients will fail to refresh their sessions once their current 1-hour access token expires. Any tool calls made during that remaining window will return fallback/anonymized results because the user's interest tags no longer exist in the database.
+
