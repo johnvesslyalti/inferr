@@ -3,13 +3,14 @@
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { Newspaper, MessageSquare, LineChart, Sliders } from 'lucide-react';
 import { ProfileMenu } from './ProfileMenu';
 import styles from './Navbar.module.css';
 
 const NAV_ITEMS = [
-  { href: '/feed', label: 'Feed' },
-  { href: '/chat', label: 'Chat' },
-  { href: '/market', label: 'Tech Market', isNew: true },
+  { href: '/feed', label: 'Feed', icon: Newspaper },
+  { href: '/chat', label: 'Chat', icon: MessageSquare },
+  { href: '/market', label: 'Tech Market', icon: LineChart, isNew: true },
 ];
 
 interface NavbarProps {
@@ -20,46 +21,72 @@ export function Navbar({ onEditInterests }: NavbarProps) {
   const pathname = usePathname();
 
   return (
-    <nav className={`${styles.nav} glassNav`}>
-      <div className={styles.navInner}>
-        {/* Brand logo & name */}
-        <Link href="/feed" className={styles.logo}>
-          <Image
-            src="/logo.png"
-            alt="Logo"
-            width={24}
-            height={24}
-            className={styles.logoImg}
-            style={{ borderRadius: '4px' }}
-          />
-          <span className={styles.logoText}>
-            inferr<span className={styles.logoDot}>.</span>
-          </span>
-        </Link>
+    <>
+      <nav className={`${styles.nav} glassNav`}>
+        <div className={styles.navInner}>
+          {/* Brand logo & name */}
+          <Link href="/feed" className={styles.logo}>
+            <Image
+              src="/logo.png"
+              alt="Logo"
+              width={24}
+              height={24}
+              className={styles.logoImg}
+              style={{ borderRadius: '4px' }}
+            />
+            <span className={styles.logoText}>
+              inferr<span className={styles.logoDot}>.</span>
+            </span>
+          </Link>
 
-        {/* Center links */}
-        <div className={styles.navLinks}>
-          {NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`${styles.navLink} ${isActive ? styles.active : ''}`}
-              >
-                {item.label}
-                {item.isNew && <span className={styles.newBadge}>new</span>}
-                {isActive && <span className={styles.activeGlow} />}
-              </Link>
-            );
-          })}
-        </div>
+          {/* Center links (desktop only) */}
+          <div className={styles.navLinks}>
+            {NAV_ITEMS.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`${styles.navLink} ${isActive ? styles.active : ''}`}
+                >
+                  {item.label}
+                  {item.isNew && <span className={styles.newBadge}>new</span>}
+                  {isActive && <span className={styles.activeGlow} />}
+                </Link>
+              );
+            })}
+          </div>
 
-        {/* Right actions */}
-        <div className={styles.navRight}>
-          <ProfileMenu onEditInterests={onEditInterests} />
+          {/* Right actions */}
+          <div className={styles.navRight}>
+            <ProfileMenu onEditInterests={onEditInterests} />
+          </div>
         </div>
+      </nav>
+
+      {/* Bottom tab bar (mobile only) */}
+      <div className={styles.mobileTabBar}>
+        {NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`${styles.tabItem} ${isActive ? styles.tabActive : ''}`}
+            >
+              <Icon size={18} />
+              <span className={styles.tabLabel}>{item.label}</span>
+            </Link>
+          );
+        })}
+        {onEditInterests && (
+          <button onClick={onEditInterests} className={styles.tabItem}>
+            <Sliders size={18} />
+            <span className={styles.tabLabel}>Interests</span>
+          </button>
+        )}
       </div>
-    </nav>
+    </>
   );
 }

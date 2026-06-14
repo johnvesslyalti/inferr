@@ -114,3 +114,58 @@
     display: none;
   }
 }
+
+.mobileTabBar {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .mobileTabBar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: rgba(10, 10, 10, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    justify-content: space-around;
+    align-items: center;
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 100;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+  }
+  
+  .tabItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.65rem;
+    font-weight: 500;
+    gap: 0.25rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    flex: 1;
+    height: 100%;
+    transition: color 0.2s ease;
+  }
+  
+  .tabItem:hover, .tabItem:focus {
+    color: var(--text-primary);
+  }
+  
+  .tabActive {
+    color: var(--accent-light);
+    font-weight: 600;
+  }
+  
+  .tabLabel {
+    font-size: 0.65rem;
+  }
+}

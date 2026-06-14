@@ -122,3 +122,9 @@ input { font-family: var(--font-body); }
   margin-left: 2px;
   animation: cursor-blink 1s infinite;
 }
+
+@media (max-width: 600px) {
+  body {
+    padding-bottom: 70px;
+  }
+}
