@@ -16,6 +16,103 @@ Personalized developer news feed powered by AI. Sign in with Google, pick intere
 | Monorepo | pnpm workspaces + Turborepo |
 | Deploy | API → Render, Web → Vercel |
 
+## System Architecture
+
+```mermaid
+graph TD
+    subgraph Client ["Client Layer"]
+        UserBrowser["User Browser (Next.js 15)"]
+        McpClient["MCP Client (e.g., Claude Desktop)"]
+    end
+
+    subgraph Web ["Web Frontend (apps/web)"]
+        NextJS["Next.js App"]
+    end
+
+    subgraph API ["NestJS API (apps/api)"]
+        AuthMod["Auth Module<br/>(Google OAuth 2.0, JWT)"]
+        FeedMod["Feed Module<br/>(Personalized feed)"]
+        ChatMod["Chat Module<br/>(LangGraph RAG)"]
+        ScraperMod["Scraper Module<br/>(Cheerio + APIs)"]
+        JobsMod["Jobs Module<br/>(Jobs & Market Reports)"]
+        McpMod["MCP Module<br/>(SSE & Tools)"]
+    end
+
+    subgraph DB ["Database Layer (PostgreSQL)"]
+        Postgres[(PostgreSQL + pgvector)]
+        UsersT[(users / user_interests)]
+        ArticlesT[(articles / embeddings)]
+        JobsT[(jobs / market_reports)]
+        McpT[(mcp_tokens / mcp_clients)]
+    end
+
+    subgraph External ["External Services"]
+        GoogleOAuth["Google OAuth 2.0"]
+        OpenAI["OpenAI API<br/>(gpt-4o-mini / text-embedding-3-small)"]
+        NewsAPIs["Hacker News & Dev.to APIs"]
+        Cheerio["Article Websites (Scraping)"]
+        GithubActions["GitHub Actions (Daily Cron)"]
+        CronJob["cron-job.org (Keep-alive)"]
+    end
+
+    %% Connections
+    UserBrowser -->|UI Interactions| NextJS
+    NextJS -->|REST API (JWT)| API
+    McpClient -->|SSE Connection & Tool Calls| McpMod
+
+    %% NestJS API mapping
+    API --> AuthMod
+    API --> FeedMod
+    API --> ChatMod
+    API --> ScraperMod
+    API --> JobsMod
+    API --> McpMod
+
+    %% Module flows
+    AuthMod -->|OAuth Consent| GoogleOAuth
+    AuthMod -->|Manage Users & Sessions| UsersT
+
+    FeedMod -->|Generate Query Vector| OpenAI
+    FeedMod -->|HNSW Vector Search| ArticlesT
+
+    ChatMod -->|Orchestrate Agent Pipeline| OpenAI
+    ChatMod -->|Retrieve Related Articles| ArticlesT
+
+    ScraperMod -->|Fetch Metadata| NewsAPIs
+    ScraperMod -->|Cheerio Extract HTML| Cheerio
+    ScraperMod -->|Summarize & Embed| OpenAI
+    ScraperMod -->|Save Parsed Content| ArticlesT
+
+    JobsMod -->|Trend Analysis| OpenAI
+    JobsMod -->|Save Market Data| JobsT
+
+    McpMod -->|Validate Session / Token| McpT
+    McpMod -->|Expose Tools: search_articles, ask_inferr, etc.| Postgres
+
+    %% Database internals
+    Postgres === UsersT
+    Postgres === ArticlesT
+    Postgres === JobsT
+    Postgres === McpT
+
+    %% External cron jobs
+    GithubActions -->|Trigger Pipeline| ScraperMod
+    CronJob -->|Ping /health| API
+
+    %% Styling
+    classDef client fill:#EBF5FF,stroke:#2563EB,stroke-width:2px,color:#1E3A8A;
+    classDef web fill:#F0FDF4,stroke:#16A34A,stroke-width:2px,color:#14532D;
+    classDef api fill:#FFF7ED,stroke:#EA580C,stroke-width:2px,color:#7C2D12;
+    classDef db fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px,color:#4C1D95;
+    classDef external fill:#F1F5F9,stroke:#475569,stroke-width:2px,color:#0F172A;
+
+    class UserBrowser,McpClient client;
+    class NextJS web;
+    class AuthMod,FeedMod,ChatMod,ScraperMod,JobsMod,McpMod api;
+    class Postgres,UsersT,ArticlesT,JobsT,McpT db;
+    class GoogleOAuth,OpenAI,NewsAPIs,Cheerio,GithubActions,CronJob external;
+```
+
 ## Structure
 
 ```
