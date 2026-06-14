@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import styles from './McpDialog.module.css';
 
@@ -8,6 +10,12 @@ interface McpDialogProps {
 }
 
 export function McpDialog({ onClose }: McpDialogProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
   const devConfig = JSON.stringify(
     {
       mcpServers: {
@@ -38,7 +46,9 @@ export function McpDialog({ onClose }: McpDialogProps) {
     navigator.clipboard.writeText(text);
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div className={styles.backdrop} onClick={onClose}>
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
@@ -115,6 +125,7 @@ export function McpDialog({ onClose }: McpDialogProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
