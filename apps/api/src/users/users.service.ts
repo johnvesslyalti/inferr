@@ -64,8 +64,11 @@ export class UsersService {
   async saveInterests(userId: string, tags: string[]): Promise<void> {
     await this.db
       .insert(userInterests)
-      .values({ userId, tags })
-      .onConflictDoUpdate({ target: userInterests.userId, set: { tags } });
+      .values({ userId, tags, queryEmbedding: null })
+      .onConflictDoUpdate({
+        target: userInterests.userId,
+        set: { tags, queryEmbedding: null },
+      });
   }
 
   async getInterests(userId: string): Promise<{ tags: string[] }> {

@@ -31,7 +31,7 @@ const CATEGORIES = [
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { token, ready } = useAuth();
+  const { token, ready, refetchProfile } = useAuth();
   const authFetch = useAuthFetch();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
@@ -66,6 +66,7 @@ export default function OnboardingPage() {
         body: JSON.stringify({ tags: Array.from(selected) }),
       });
       if (!res.ok) throw new Error('Failed to save interests');
+      await refetchProfile();
       router.push('/feed');
     } catch (err) {
       if (err instanceof SessionExpiredError) { router.push('/'); return; }

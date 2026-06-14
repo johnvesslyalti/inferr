@@ -46,8 +46,11 @@ describe('FeedService (unit)', () => {
       }),
       execute: jest.fn(),
       // not used directly but for completeness
-      insert: jest.fn(),
-      update: jest.fn(),
+      update: jest.fn(() => ({
+        set: jest.fn(() => ({
+          where: jest.fn(() => Promise.resolve({ rowCount: 1 })),
+        })),
+      })),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -222,5 +225,27 @@ describe('FeedService (unit)', () => {
     expect(aiService.embed).toHaveBeenCalledWith(
       'software development programming tutorials',
     );
+  });
+
+  it('uses cached embedding if queryEmbedding is present and avoids calling aiService.embed', async () => {
+    const cachedEmbedding = [0.9, 0.8];
+    mockDb.select.mockReturnValueOnce({
+      from: jest.fn(() => ({
+        where: jest.fn(() => ({
+          limit: jest.fn(() =>
+            Promise.resolve([
+              { tags: ['nextjs'], queryEmbedding: cachedEmbedding },
+            ]),
+          ),
+        })),
+      })),
+    });
+
+    mockDb.execute.mockResolvedValue({ rows: [] });
+
+    await service.getPersonalizedFeed('u-cached');
+
+    expect(aiService.embed).not.toHaveBeenCalled();
+    expect(mockDb.execute).toHaveBeenCalled();
   });
 });

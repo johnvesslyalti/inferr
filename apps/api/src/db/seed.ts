@@ -48,10 +48,11 @@ async function seed() {
     .values({
       userId: user.id,
       tags: ['nextjs', 'llm', 'python'],
+      queryEmbedding: null,
     })
     .onConflictDoUpdate({
       target: schema.userInterests.userId,
-      set: { tags: ['nextjs', 'llm', 'python'] },
+      set: { tags: ['nextjs', 'llm', 'python'], queryEmbedding: null },
     });
 
   console.log(`Upserted interests for ${user.email}: nextjs, llm, python`);
