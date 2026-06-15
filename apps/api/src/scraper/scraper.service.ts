@@ -118,16 +118,23 @@ export class ScraperService {
       ...hackernoon,
     ];
 
+    // Keep only articles published within the last 24 hours
+    const recencyCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const freshArticles = allScraped.filter((art) => {
+      const pubDate = art.publishedAt ? new Date(art.publishedAt) : null;
+      return pubDate && pubDate >= recencyCutoff;
+    });
+
     // Deduplicate globally by URL to prevent saving duplicates in the same run
     const uniqueMap = new Map<string, NewArticle>();
-    for (const art of allScraped) {
+    for (const art of freshArticles) {
       if (art.url) {
         uniqueMap.set(art.url, art);
       }
     }
     const uniqueArticles = Array.from(uniqueMap.values());
     this.logger.log(
-      `Scraped ${uniqueArticles.length} unique articles across 10 sources`,
+      `Scraped ${uniqueArticles.length} unique articles across 10 sources (filtered to last 24h from ${allScraped.length} total)`,
     );
 
     // Save articles (deduplicating in DB via onConflictDoNothing)
@@ -136,8 +143,8 @@ export class ScraperService {
     // Fetch full page content for new articles
     const content = await this.scrapeContentForArticles(newArticles);
 
-    // Prune the database to keep only the 50 most recent articles overall
-    await this.cleanOldArticles(50);
+    // Prune the database to keep only the 100 most recent articles overall
+    await this.cleanOldArticles(100);
 
     return {
       hn: hn.length,
@@ -146,7 +153,7 @@ export class ScraperService {
     };
   }
 
-  async cleanOldArticles(limit = 50): Promise<number> {
+  async cleanOldArticles(limit = 100): Promise<number> {
     this.logger.log(
       `Pruning database to keep only the ${limit} most recent articles...`,
     );
