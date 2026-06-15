@@ -200,10 +200,10 @@ sequenceDiagram
     rect rgb(235, 245, 255)
     Note over API,DB: Stage 1 — store metadata
     par Fetch in parallel
-        API->>Sources: GET top 30 Hacker News stories
-        API->>Sources: GET top 30 Dev.to articles
+        API->>Sources: GET top articles (HN, Dev.to, Reddit, etc.)
     end
     Sources-->>API: title, url, source, tags, publishedAt
+    Note over API: Filter: Keep only articles published within the last 24h
     API->>DB: INSERT articles (metadata only)<br/>ON CONFLICT (url) DO NOTHING
     DB-->>API: ids of NEW rows (duplicates skipped)
     end
@@ -228,16 +228,17 @@ sequenceDiagram
         OpenAI-->>API: [0.021, -0.043, ...] (1536 floats)
         API->>DB: UPDATE articles SET summary, embedding
     end
+    API->>DB: Prune DB to keep top 100 articles (cleanOldArticles)
     end
 
-    API-->>Cron: { saved, summarized }
+    API-->>Cron: { saved, summarized, cleaned }
 ```
 
-Each article row is written **three times** over the pipeline: metadata on insert, then `content`, then `summary` + `embedding`. Deduplication (`ON CONFLICT`) and the `summary IS NULL` filter mean an article is only ever scraped and summarized **once**, no matter how often the pipeline runs. Tags are included in the embedding input so vector similarity captures topic signals beyond the summary text.
+Each article row is written **three times** over the pipeline: metadata on insert, then `content`, then `summary` + `embedding`. Deduplication (`ON CONFLICT`), the 24-hour scraper check, and the `summary IS NULL` filter mean an article is only ever scraped and summarized **once**, saving database space and OpenAI API costs. Tags are included in the embedding input so vector similarity captures topic signals beyond the summary text.
 
 ## Feed Flow
 
-The feed applies a relevance threshold, recency filter, and tag-overlap bonus before returning articles. If no articles clear the threshold, a fallback set is returned alongside `hasMatches: false` so the UI can show a graceful empty state.
+The feed retrieves articles based on vector similarity, applying a strict 24-hour SQL filter, tag-overlap bonuses, and a source diversity check to ensure variety. If no articles clear the criteria, an empty feed is returned along with `hasMatches: false` so the UI can show a clean empty state recommending that the user expand their interests.
 
 ```mermaid
 sequenceDiagram
@@ -253,12 +254,12 @@ sequenceDiagram
     Postgres-->>NestJS: ["typescript", "rust"]
     NestJS->>OpenAI: embed("typescript rust")
     OpenAI-->>NestJS: [0.021, -0.043, ...] (1536 floats)
-    NestJS->>Postgres: SELECT title, url, source, summary, tags, published_at<br/>FROM articles WHERE embedding IS NOT NULL<br/>ORDER BY embedding <=> query_vector
+    NestJS->>Postgres: SELECT title, url, source, summary, tags, published_at<br/>FROM articles WHERE embedding IS NOT NULL AND created_at >= 24h ago<br/>ORDER BY embedding <=> query_vector LIMIT 60
     Note over Postgres: HNSW index → O(log n) ANN search
-    Postgres-->>NestJS: all ranked articles
-    Note over NestJS: Apply tag-overlap bonus (−0.12 per match)<br/>Filter: cosine distance < 0.5 AND published within 48h<br/>→ matched articles OR fallback top-10
-    NestJS-->>Next.js: { hasMatches, articles, fallback }
-    Next.js-->>Browser: Rendered feed (or "nothing new" state)
+    Postgres-->>NestJS: top 60 fresh articles
+    Note over NestJS: Apply tag-overlap boost (+0.15/tag, max 0.30)<br/>Filter: cosine distance < 0.5 (score >= 50%)<br/>Source Diversity: Select highest-ranked per source<br/>Sort final list by match score descending
+    NestJS-->>Next.js: { hasMatches, articles, fallback: [] }
+    Next.js-->>Browser: Rendered feed with real Match Scores (or empty state)
 ```
 
 ## Agentic Chat
