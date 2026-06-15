@@ -14,6 +14,7 @@ interface Article {
   url: string;
   source: string;
   publishedAt: string | null;
+  score?: number;
 }
 
 interface FeedResponse {
@@ -73,7 +74,9 @@ function sameFeed(a: FeedResponse, b: FeedResponse): boolean {
 const SCORES = ['98%', '95%', '91%', '88%', '84%'];
 
 function ArticleCard({ article, index }: { article: Article; index: number }) {
-  const score = SCORES[index % SCORES.length];
+  const score = article.score !== undefined
+    ? `${Math.round(article.score * 100)}%`
+    : SCORES[index % SCORES.length];
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return null;
@@ -236,8 +239,7 @@ export default function FeedPage() {
   }, [revalidate, router, token, ready, user, refetchKey]);
 
   const isEmpty = !loading && !error &&
-    (feed?.articles?.length ?? 0) === 0 &&
-    (feed?.fallback?.length ?? 0) === 0;
+    (feed?.articles?.length ?? 0) === 0;
 
   return (
     <div className={`${styles.page} pageGlow`}>
@@ -299,7 +301,7 @@ export default function FeedPage() {
         {isEmpty && (
           <div className={styles.empty}>
             <div className={styles.emptyIcon}>∅</div>
-            <p className={styles.emptyText}>No articles matched your interests today.</p>
+            <p className={styles.emptyText}>There are no articles today matching your interests. Try adding more interests to see more articles!</p>
             <a
               href="#"
               onClick={(e) => {
@@ -322,31 +324,7 @@ export default function FeedPage() {
           </div>
         )}
 
-        {/* Fallback section */}
-        {!loading && !error && !feed?.hasMatches && (feed?.fallback?.length ?? 0) > 0 && (
-          <>
-            <div className={styles.nothingNew}>
-              <div className={styles.nothingNewIcon}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                  <polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-              </div>
-              <p className={styles.nothingNewText}>
-                No new matches in the past 24 hours. Here is your personalized archive feed:
-              </p>
-            </div>
 
-            <div className={styles.fallbackSection}>
-              <p className={styles.fallbackLabel}>Archive Feed</p>
-              <div className={styles.list}>
-                {(feed?.fallback ?? []).slice(0, MAX_FEED_ARTICLES).map((article, i) => (
-                  <ArticleCard key={i} article={article} index={i} />
-                ))}
-              </div>
-            </div>
-          </>
-        )}
       </main>
     </div>
   );

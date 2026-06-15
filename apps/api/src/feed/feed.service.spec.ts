@@ -142,7 +142,7 @@ describe('FeedService (unit)', () => {
     // a1 had tag bonus applied in distance calc inside service
   });
 
-  it('falls back to best overall matches (no recency filter) when no recent interest matches', async () => {
+  it('returns empty feed (no fallback archive) when no recent interest matches', async () => {
     aiService.embed.mockResolvedValue(baseEmbedding);
 
     const old = new Date(Date.now() - 1000 * 3600 * 72);
@@ -176,8 +176,61 @@ describe('FeedService (unit)', () => {
 
     expect(res.hasMatches).toBe(false);
     expect(res.articles).toEqual([]);
-    expect(res.fallback.length).toBe(2);
-    expect(res.fallback[0].title).toBe('Good Match Old');
+    expect(res.fallback).toEqual([]);
+  });
+
+  it('enforces source diversity by prioritizing unique sources in the top 5', async () => {
+    aiService.embed.mockResolvedValue(baseEmbedding);
+
+    const now = new Date();
+    const recent = new Date(now.getTime() - 1000 * 3600 * 12); // within 24 hours
+
+    mockDb.execute.mockResolvedValue({
+      rows: [
+        {
+          id: 'a1',
+          title: 'HN 1',
+          url: 'https://ex.com/hn1',
+          source: 'hn',
+          summary: 's1',
+          created_at: recent.toISOString(),
+          tags: ['nextjs'],
+          cosine_distance: '0.20', // score = 0.95 (since 0.20 - 0.15 tag boost = 0.05, score = 0.95)
+        },
+        {
+          id: 'a2',
+          title: 'HN 2',
+          url: 'https://ex.com/hn2',
+          source: 'hn',
+          summary: 's2',
+          created_at: recent.toISOString(),
+          tags: ['nextjs'],
+          cosine_distance: '0.22', // score = 0.93 (since 0.22 - 0.15 tag boost = 0.07, score = 0.93)
+        },
+        {
+          id: 'a3',
+          title: 'DevTo 1',
+          url: 'https://ex.com/devto1',
+          source: 'devto',
+          summary: 's3',
+          created_at: recent.toISOString(),
+          tags: [],
+          cosine_distance: '0.30', // score = 0.70 (no tag boost, score = 0.70)
+        },
+      ],
+    });
+
+    const res = await service.getPersonalizedFeed('u-1');
+
+    expect(res.hasMatches).toBe(true);
+    expect(res.articles.length).toBe(3);
+    // The final articles should be sorted by score descending
+    expect(res.articles[0].title).toBe('HN 1');
+    expect(res.articles[0].score).toBeCloseTo(0.95, 2);
+    expect(res.articles[1].title).toBe('HN 2');
+    expect(res.articles[1].score).toBeCloseTo(0.93, 2);
+    expect(res.articles[2].title).toBe('DevTo 1');
+    expect(res.articles[2].score).toBeCloseTo(0.70, 2);
   });
 
   it('getDebugFeed returns raw cosine + similarityScore over top 20', async () => {

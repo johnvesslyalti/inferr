@@ -45,7 +45,7 @@ export class SchedulerService {
         await this.aiService.processUnsummarized(50);
       this.logger.log(`Summarized/embedded: ${processed} ok, ${failed} failed`);
 
-      const cleaned = await this.scraperService.cleanOldArticles(50);
+      const cleaned = await this.scraperService.cleanOldArticles(100);
       this.logger.log(`Pruned database to keep only ${cleaned} articles`);
     } catch (err) {
       this.logger.error(
