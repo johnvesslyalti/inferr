@@ -61,17 +61,22 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Trigger Render Deploy Hook
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
         run: |
           echo "Triggering Render deployment via Deploy Hook..."
-          curl -s -f -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+          curl -s -f -X POST "${{ env.RENDER_DEPLOY_HOOK_URL }}"
 
       - name: Trigger Render API Rollout
-        if: ${{ secrets.RENDER_API_KEY != '' && secrets.RENDER_SERVICE_ID != '' }}
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        if: env.RENDER_API_KEY != '' && env.RENDER_SERVICE_ID != ''
         run: |
           echo "Triggering Render deployment via API key..."
-          curl -s -f -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
-            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+          curl -s -f -X POST "https://api.render.com/v1/services/${{ env.RENDER_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer ${{ env.RENDER_API_KEY }}" \
             -H "Accept: application/json" \
             -H "Content-Type: application/json"
 
