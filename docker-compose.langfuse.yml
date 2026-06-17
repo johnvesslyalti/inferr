@@ -1,0 +1,35 @@
+services:
+  langfuse-db:
+    image: postgres:16-alpine
+    container_name: langfuse-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: langfuse
+    ports:
+      - '5434:5432'
+    volumes:
+      - langfuse_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  langfuse-web:
+    image: langfuse/langfuse:2
+    container_name: langfuse-dashboard
+    ports:
+      - '3010:3000'
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@langfuse-db:5432/langfuse
+      - NEXTAUTH_SECRET=7300c3b8893d9ef784ef3b2bce151cd11ea5404f693246ebc60c239bd9dfa6d1
+      - SALT=bd9b9cbca0b49377ff2b3fe1d161ef2f20bd9bcf69ab47e62c161be2d9dfd71c
+      - NEXTAUTH_URL=http://localhost:3010
+      - TELEMETRY_ENABLED=false
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+
+volumes:
+  langfuse_db_data:

@@ -138,7 +138,11 @@ export class McpService implements OnModuleDestroy {
       async () => {
         const report = await this.jobsService.getMarketReport();
         if (report.roles.length === 0) {
-          return { content: [{ type: 'text', text: 'No market report data available.' }] };
+          return {
+            content: [
+              { type: 'text', text: 'No market report data available.' },
+            ],
+          };
         }
 
         const text =
@@ -161,12 +165,25 @@ export class McpService implements OnModuleDestroy {
       async () => {
         const report = await this.jobsService.getReport();
         if (report.totalListings === 0) {
-          return { content: [{ type: 'text', text: 'No hiring statistics available for the last 30 days.' }] };
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'No hiring statistics available for the last 30 days.',
+              },
+            ],
+          };
         }
 
-        const skills = report.topSkills.map((s, i) => `   ${i + 1}. ${s.skill} (${s.count} listings)`).join('\n');
-        const companies = report.topCompanies.map((c, i) => `   ${i + 1}. ${c.company} (${c.count} listings)`).join('\n');
-        const categories = report.roleBreakdown.map((c, i) => `   ${i + 1}. ${c.category} (${c.count} listings)`).join('\n');
+        const skills = report.topSkills
+          .map((s, i) => `   ${i + 1}. ${s.skill} (${s.count} listings)`)
+          .join('\n');
+        const companies = report.topCompanies
+          .map((c, i) => `   ${i + 1}. ${c.company} (${c.count} listings)`)
+          .join('\n');
+        const categories = report.roleBreakdown
+          .map((c, i) => `   ${i + 1}. ${c.category} (${c.count} listings)`)
+          .join('\n');
 
         const text =
           `Hiring Statistics (Last 30 Days | Generated: ${report.generatedAt}):\n` +

@@ -4,6 +4,7 @@ import { AiService } from '../ai/ai.service';
 import { DRIZZLE } from '../db/drizzle.provider';
 import { ChatService } from './chat.service';
 import { EvaluationsService } from '../evaluations/evaluations.service';
+import { LangfuseService } from '../langfuse/langfuse.service';
 
 // Hoisted mocks prevent loading real ESM-only @langchain packages (and transitive uuid etc)
 // during unit test collection/execution. We stub just enough for the SUT module to parse.
@@ -33,6 +34,7 @@ describe('AgenticRagService + ChatService (unit)', () => {
   let aiService: jest.Mocked<AiService>;
   let mockDb: any;
   let mockEvaluations: jest.Mocked<EvaluationsService>;
+  let mockLangfuseService: any;
 
   beforeEach(async () => {
     aiService = {
@@ -54,11 +56,17 @@ describe('AgenticRagService + ChatService (unit)', () => {
       evaluateAsync: jest.fn(), // fire-and-forget stub
     } as any;
 
+    mockLangfuseService = {
+      isEnabled: jest.fn().mockReturnValue(false),
+      createCallbackHandler: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AgenticRagService,
         { provide: AiService, useValue: aiService },
         { provide: DRIZZLE, useValue: mockDb },
+        { provide: LangfuseService, useValue: mockLangfuseService },
         { provide: EvaluationsService, useValue: mockEvaluations },
       ],
     }).compile();
@@ -249,6 +257,7 @@ describe('AgenticRagService + ChatService (unit)', () => {
         AgenticRagService,
         { provide: AiService, useValue: aiService },
         { provide: DRIZZLE, useValue: mockDb },
+        { provide: LangfuseService, useValue: mockLangfuseService },
         // EvaluationsService intentionally omitted
       ],
     }).compile();

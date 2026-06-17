@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
 import { ChatOpenAI } from '@langchain/openai';
+import { LangfuseService } from '../langfuse/langfuse.service';
 import type {
   EvaluationInput,
   EvaluationResult,
@@ -60,6 +61,8 @@ type JudgeOutput = z.infer<typeof JudgeSchema>;
 export class EvaluationsService {
   private readonly logger = new Logger(EvaluationsService.name);
   private _judgeLlm?: ReturnType<ChatOpenAI['withStructuredOutput']>;
+
+  constructor(private readonly langfuseService: LangfuseService) {}
 
   private get judgeLlm(): ReturnType<ChatOpenAI['withStructuredOutput']> {
     if (!this._judgeLlm) {
@@ -133,10 +136,25 @@ Generated Answer: ${answer}
 Score the above response.`;
 
     try {
-      const result = (await this.judgeLlm.invoke([
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ])) as JudgeOutput;
+      const config: { callbacks?: any[] } = {};
+      if (this.langfuseService.isEnabled()) {
+        const handler = this.langfuseService.createCallbackHandler({
+          traceName: 'RAG Evaluation',
+          userId,
+          tags: ['evaluation'],
+        });
+        if (handler) {
+          config.callbacks = [handler];
+        }
+      }
+
+      const result = (await this.judgeLlm.invoke(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        config,
+      )) as JudgeOutput;
 
       const scores: MetricScores = {
         faithfulness: this.clampScore(result.faithfulness),

@@ -14,6 +14,7 @@ import { DRIZZLE } from '../db/drizzle.provider';
 import type { DrizzleDB } from '../db/drizzle.provider';
 import { AiService } from '../ai/ai.service';
 import { EvaluationsService } from '../evaluations/evaluations.service';
+import { LangfuseService } from '../langfuse/langfuse.service';
 import { aiEvaluations } from '../db/schema';
 import type {
   ChatSource,
@@ -86,6 +87,7 @@ export class AgenticRagService {
   constructor(
     @Inject(DRIZZLE) private db: DrizzleDB,
     private readonly aiService: AiService,
+    private readonly langfuseService: LangfuseService,
     @Optional() private readonly evaluationsService?: EvaluationsService,
   ) {}
 
@@ -219,8 +221,27 @@ export class AgenticRagService {
       iterations: 0,
     };
 
+    const config: { callbacks?: any[] } = {};
+    if (this.langfuseService.isEnabled()) {
+      const handler = this.langfuseService.createCallbackHandler({
+        traceName: 'Agentic RAG Query',
+        userId,
+        tags: ['agentic-rag'],
+        metadata: {
+          question: q,
+          historyTurns: history.length,
+        },
+      });
+      if (handler) {
+        config.callbacks = [handler];
+      }
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const finalState = (await this.graph.invoke(initialState)) as RagState;
+    const finalState = (await this.graph.invoke(
+      initialState,
+      config,
+    )) as RagState;
 
     // Fire-and-forget: score the response without blocking the user reply.
     if (this.evaluationsService && !options.skipRuntimeEval) {

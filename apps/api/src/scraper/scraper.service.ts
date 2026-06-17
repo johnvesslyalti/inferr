@@ -30,6 +30,7 @@ interface DevToArticle {
   url: string;
   published_at: string;
   tag_list: string[];
+  cover_image?: string;
 }
 
 interface RedditChild {
@@ -52,6 +53,7 @@ interface TechCrunchPost {
   };
   link?: string;
   date?: string;
+  jetpack_featured_media_url?: string;
 }
 
 interface GitHubItem {
@@ -258,6 +260,7 @@ export class ScraperService {
             source: 'devto',
             tags: article.tag_list ?? [tag],
             publishedAt: new Date(article.published_at),
+            imageUrl: article.cover_image || null,
           }));
         } catch (err) {
           this.logger.warn(`Failed to scrape Dev.to for tag ${tag}: ${err}`);
@@ -461,6 +464,7 @@ export class ScraperService {
             source: 'techcrunch',
             tags: [tag],
             publishedAt: post?.date ? new Date(post.date) : new Date(),
+            imageUrl: post?.jetpack_featured_media_url || null,
           }));
         } catch (err) {
           this.logger.warn(
@@ -583,7 +587,9 @@ export class ScraperService {
    * Returns null on any failure (timeout, non-200, parse error) so the
    * pipeline can skip silently — many sites block bots or paywall content.
    */
-  async fetchContent(url: string): Promise<string | null> {
+  async fetchContentAndImage(
+    url: string,
+  ): Promise<{ content: string | null; imageUrl: string | null }> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
@@ -592,10 +598,17 @@ export class ScraperService {
         signal: controller.signal,
         headers: { 'User-Agent': 'ai-developer-feed/1.0' },
       });
-      if (!res.ok) return null;
+      if (!res.ok) return { content: null, imageUrl: null };
 
       const html = await res.text();
       const $ = cheerio.load(html);
+
+      // Extract image URL from Open Graph or Twitter Card tags
+      const imageUrl =
+        $('meta[property="og:image"]').attr('content') ||
+        $('meta[name="twitter:image"]').attr('content') ||
+        $('link[rel="image_src"]').attr('href') ||
+        null;
 
       // Strip noise before extracting text
       $('script, style, nav, header, footer, aside').remove();
@@ -611,18 +624,26 @@ export class ScraperService {
       }
 
       const cleaned = text.replace(/\s+/g, ' ').trim();
-      if (!cleaned) return null;
+      if (!cleaned) return { content: null, imageUrl };
 
-      return cleaned.slice(0, CONTENT_MAX_CHARS);
+      return {
+        content: cleaned.slice(0, CONTENT_MAX_CHARS),
+        imageUrl: imageUrl ? imageUrl.trim() : null,
+      };
     } catch {
-      return null;
+      return { content: null, imageUrl: null };
     } finally {
       clearTimeout(timeout);
     }
   }
 
+  async fetchContent(url: string): Promise<string | null> {
+    const res = await this.fetchContentAndImage(url);
+    return res.content;
+  }
+
   /**
-   * Fetches and stores content for newly-inserted articles, in batches of
+   * Fetches and stores content and images for newly-inserted articles, in batches of
    * CONTENT_CONCURRENCY to avoid hammering sites or spiking memory.
    */
   private async scrapeContentForArticles(
@@ -630,7 +651,9 @@ export class ScraperService {
   ): Promise<{ saved: number; skipped: number }> {
     if (newArticles.length === 0) return { saved: 0, skipped: 0 };
 
-    this.logger.log(`Fetching content for ${newArticles.length} articles...`);
+    this.logger.log(
+      `Fetching content and images for ${newArticles.length} articles...`,
+    );
 
     let saved = 0;
     let skipped = 0;
@@ -639,10 +662,14 @@ export class ScraperService {
       const batch = newArticles.slice(i, i + CONTENT_CONCURRENCY);
 
       const results = await Promise.all(
-        batch.map(async (article) => ({
-          id: article.id,
-          content: await this.fetchContent(article.url),
-        })),
+        batch.map(async (article) => {
+          const fetchRes = await this.fetchContentAndImage(article.url);
+          return {
+            id: article.id,
+            content: fetchRes.content,
+            imageUrl: fetchRes.imageUrl,
+          };
+        }),
       );
 
       const successful = results.filter((r) => r.content !== null);
@@ -654,7 +681,11 @@ export class ScraperService {
           successful.map((r) =>
             this.db
               .update(articles)
-              .set({ content: r.content, contentScrapedAt: scrapedAt })
+              .set({
+                content: r.content,
+                contentScrapedAt: scrapedAt,
+                imageUrl: r.imageUrl,
+              })
               .where(eq(articles.id, r.id)),
           ),
         );
@@ -662,7 +693,9 @@ export class ScraperService {
       }
     }
 
-    this.logger.log(`Content fetched — saved: ${saved}, skipped: ${skipped}`);
+    this.logger.log(
+      `Content and images fetched — saved: ${saved}, skipped: ${skipped}`,
+    );
     return { saved, skipped };
   }
 }

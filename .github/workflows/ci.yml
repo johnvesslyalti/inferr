@@ -75,6 +75,7 @@ jobs:
       GOOGLE_CALLBACK_URL: http://localhost:3001/auth/google/callback
       FRONTEND_URL: http://localhost:3000
       JWT_SECRET: test-secret
+      NODE_OPTIONS: --experimental-vm-modules
 
     steps:
       - uses: actions/checkout@v4
@@ -149,6 +150,7 @@ jobs:
       GOOGLE_CALLBACK_URL: http://localhost:3001/auth/google/callback
       FRONTEND_URL: http://localhost:3000
       JWT_SECRET: test-jwt-secret-for-api-tests-1234567890abcdef
+      NODE_OPTIONS: --experimental-vm-modules
 
     steps:
       - uses: actions/checkout@v4

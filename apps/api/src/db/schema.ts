@@ -54,6 +54,7 @@ export const articles = pgTable(
     embedding: vector('embedding', 1536),
     tags: text('tags').array().notNull().default([]),
     publishedAt: timestamp('published_at'),
+    imageUrl: varchar('image_url', { length: 2048 }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (t) => [
