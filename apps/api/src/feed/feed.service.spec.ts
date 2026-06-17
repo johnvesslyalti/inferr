@@ -230,7 +230,7 @@ describe('FeedService (unit)', () => {
     expect(res.articles[1].title).toBe('HN 2');
     expect(res.articles[1].score).toBeCloseTo(0.93, 2);
     expect(res.articles[2].title).toBe('DevTo 1');
-    expect(res.articles[2].score).toBeCloseTo(0.70, 2);
+    expect(res.articles[2].score).toBeCloseTo(0.7, 2);
   });
 
   it('getDebugFeed returns raw cosine + similarityScore over top 20', async () => {

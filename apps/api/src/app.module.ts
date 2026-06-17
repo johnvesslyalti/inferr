@@ -14,6 +14,7 @@ import { ChatModule } from './chat/chat.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { McpModule } from './mcp/mcp.module';
 import { EvaluationsModule } from './evaluations/evaluations.module';
+import { LangfuseModule } from './langfuse/langfuse.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
 @Module({
@@ -31,6 +32,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     SchedulerModule,
     McpModule,
     EvaluationsModule,
+    LangfuseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

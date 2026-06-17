@@ -27,10 +27,12 @@ jest.mock('@langchain/openai', () => {
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { EvaluationsService } from './evaluations.service';
+import { LangfuseService } from '../langfuse/langfuse.service';
 
 describe('EvaluationsService (unit)', () => {
   let service: EvaluationsService;
   let judgeLlmMock: { invoke: jest.Mock };
+  let mockLangfuseService: any;
 
   const baseInput = {
     question: 'What is RAG?',
@@ -55,8 +57,16 @@ describe('EvaluationsService (unit)', () => {
   };
 
   beforeEach(async () => {
+    mockLangfuseService = {
+      isEnabled: jest.fn().mockReturnValue(false),
+      createCallbackHandler: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [EvaluationsService],
+      providers: [
+        EvaluationsService,
+        { provide: LangfuseService, useValue: mockLangfuseService },
+      ],
     }).compile();
 
     service = module.get<EvaluationsService>(EvaluationsService);

@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import OpenAI from 'openai';
+import { observeOpenAI } from '@langfuse/openai';
 import { isNull } from 'drizzle-orm';
 import { DRIZZLE } from '../db/drizzle.provider';
 import type { DrizzleDB } from '../db/drizzle.provider';
@@ -12,7 +13,9 @@ export class AiService {
   private readonly client: OpenAI;
 
   constructor(@Inject(DRIZZLE) private db: DrizzleDB) {
-    this.client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    this.client = observeOpenAI(
+      new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
+    );
   }
 
   async summarize(title: string, content?: string): Promise<string> {

@@ -185,7 +185,10 @@ describe('ScraperService (unit)', () => {
       .mockResolvedValue([{ id: 'h1', url: 'https://h.com' }]);
 
     // content fetch for the new one
-    jest.spyOn(service, 'fetchContent').mockResolvedValue('some article body');
+    jest.spyOn(service, 'fetchContentAndImage').mockResolvedValue({
+      content: 'some article body',
+      imageUrl: 'https://h.com/image.jpg',
+    });
 
     // The private scrapeContentForArticles will do update for content
     mockDb.update.mockReturnValue({
@@ -199,7 +202,7 @@ describe('ScraperService (unit)', () => {
     expect(result.hn).toBe(1);
     expect(result.devto).toBe(0);
     expect(result.content.saved).toBe(1);
-    expect(service.fetchContent).toHaveBeenCalledWith('https://h.com');
+    expect(service.fetchContentAndImage).toHaveBeenCalledWith('https://h.com');
   });
 
   it('cleanOldArticles calls db delete with correct date and returns count', async () => {

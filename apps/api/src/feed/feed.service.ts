@@ -12,6 +12,7 @@ export interface FeedArticle {
   url: string;
   source: string;
   publishedAt: string | null;
+  imageUrl: string | null;
   score: number;
 }
 
@@ -106,11 +107,12 @@ export class FeedService {
       summary: string | null;
       created_at: string;
       published_at: string | null;
+      image_url: string | null;
       tags: string[];
       cosine_distance: string;
     }>(
       sql`
-        SELECT id, title, url, source, summary, created_at, published_at, tags,
+        SELECT id, title, url, source, summary, created_at, published_at, image_url, tags,
           (embedding <=> ${embeddingStr}::vector) AS cosine_distance
         FROM articles
         WHERE embedding IS NOT NULL AND created_at >= ${recencyCutoff.toISOString()}::timestamp
@@ -123,15 +125,13 @@ export class FeedService {
 
     const allArticles = rows.rows.map((r) => {
       const articleTags: string[] = Array.isArray(r.tags) ? r.tags : [];
-      const matchedTags = userTagsLower.length > 0
-        ? articleTags.filter((t) => userTagsLower.includes(t.toLowerCase()))
-        : [];
-      const tagBoost = Math.min(0.30, matchedTags.length * TAG_BONUS);
+      const matchedTags =
+        userTagsLower.length > 0
+          ? articleTags.filter((t) => userTagsLower.includes(t.toLowerCase()))
+          : [];
+      const tagBoost = Math.min(0.3, matchedTags.length * TAG_BONUS);
       const raw = Number(r.cosine_distance);
-      const distance = Math.max(
-        0,
-        (isNaN(raw) ? 1 : raw) - tagBoost,
-      );
+      const distance = Math.max(0, (isNaN(raw) ? 1 : raw) - tagBoost);
       const score = Math.max(0, Math.min(1, 1 - distance));
 
       return {
@@ -141,6 +141,7 @@ export class FeedService {
         source: r.source,
         createdAt: r.created_at ? new Date(r.created_at) : new Date(0),
         publishedAt: r.published_at ? new Date(r.published_at) : null,
+        imageUrl: r.image_url,
         distance,
         score,
       };
@@ -277,6 +278,7 @@ function toFeedArticle(a: {
   source: string;
   publishedAt?: Date | null;
   createdAt?: Date | null;
+  imageUrl?: string | null;
   score: number;
 }): FeedArticle {
   const date = a.publishedAt || a.createdAt || null;
@@ -286,6 +288,7 @@ function toFeedArticle(a: {
     url: a.url,
     source: a.source,
     publishedAt: date ? date.toISOString() : null,
+    imageUrl: a.imageUrl || null,
     score: a.score,
   };
 }
