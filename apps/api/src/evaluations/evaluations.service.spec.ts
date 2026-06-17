@@ -234,4 +234,47 @@ describe('EvaluationsService (unit)', () => {
     await new Promise(setImmediate);
     // No assertion beyond "it didn't crash"
   });
+
+  // ---------------------------------------------------------------------------
+  // Additional Coverage Tests
+  // ---------------------------------------------------------------------------
+
+  it('should lazily initialize the judgeLlm', () => {
+    delete (service as any)._judgeLlm;
+    const llm = (service as any).judgeLlm;
+    expect(llm).toBeDefined();
+    // Subsequent calls return cached instance
+    expect((service as any).judgeLlm).toBe(llm);
+  });
+
+  it('passes Langfuse callback handler to LLM when Langfuse is enabled', async () => {
+    const mockHandler = { name: 'mockCallbackHandler' };
+    mockLangfuseService.isEnabled.mockReturnValue(true);
+    mockLangfuseService.createCallbackHandler.mockReturnValue(mockHandler);
+
+    await service.evaluate(baseInput);
+
+    expect(mockLangfuseService.createCallbackHandler).toHaveBeenCalledWith({
+      traceName: 'RAG Evaluation',
+      userId: baseInput.userId,
+      tags: ['evaluation'],
+    });
+    expect(judgeLlmMock.invoke).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ callbacks: [mockHandler] }),
+    );
+  });
+
+  it('evaluateAsync logs unhandled rejection if evaluate throws', async () => {
+    const loggerSpy = jest.spyOn((service as any).logger, 'error').mockImplementation();
+    jest.spyOn(service, 'evaluate').mockRejectedValueOnce(new Error('unhandled error'));
+
+    service.evaluateAsync(baseInput);
+    await new Promise(setImmediate);
+
+    expect(loggerSpy).toHaveBeenCalledWith(
+      expect.stringContaining('evaluateAsync unhandled rejection'),
+    );
+    loggerSpy.mockRestore();
+  });
 });
