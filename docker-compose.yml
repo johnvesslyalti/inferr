@@ -34,9 +34,23 @@ services:
       DB_PORT: 5432
       DB_SSL: 'false'
       API_PORT: 3001
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318/v1/traces
+      OTEL_SERVICE_NAME: ai-feed-api
     depends_on:
       postgres:
         condition: service_healthy
+      jaeger:
+        condition: service_started
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - '16686:16686' # Jaeger UI
+      - '4317:4317'   # OTLP gRPC receiver
+      - '4318:4318'   # OTLP HTTP receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
 
 volumes:
   postgres_data:

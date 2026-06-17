@@ -1,4 +1,5 @@
 import './env';
+import './otel';
 import * as path from 'path';
 import cookieParser from 'cookie-parser';
 import { NestFactory } from '@nestjs/core';
