@@ -113,7 +113,8 @@ constructor(@Inject(DRIZZLE) private db: DrizzleDB) {}
 
 **Security notes:** Refresh tokens are rotated on every use and stored SHA-256-hashed in `mcp_tokens`. Reuse of an already-rotated token nukes the entire chain for that user. MCP JWTs carry `type: 'mcp_access'` to prevent cross-use with web-app tokens.
 
-**Single-instance caveat:** Registered clients and pending auth state are stored in-memory — a second API instance would break the OAuth flow. Refresh tokens are DB-backed and survive restarts.
+**Single-instance caveat:** Active MCP SSE session transports are stored in-memory (in `McpService`'s `transports` Map), meaning horizontal scaling requires sticky sessions at the load balancer/gateway level so that subsequent requests with a given session ID route to the container holding that socket. Registered OAuth clients, tokens, and pending PKCE authorization states are fully database-backed and cluster-safe.
+
 
 ### Next.js web app
 - `app/page.tsx` — public landing page; Sign In links to `${NEXT_PUBLIC_API_URL}/auth/google`
