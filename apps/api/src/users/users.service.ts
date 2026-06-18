@@ -39,7 +39,16 @@ export class UsersService {
       avatar,
     };
 
-    const [created] = await this.db.insert(users).values(newUser).returning();
+    const created = await this.db.transaction(async (tx) => {
+      const [user] = await tx.insert(users).values(newUser).returning();
+      await tx.insert(userInterests).values({
+        userId: user.id,
+        tags: [],
+        queryEmbedding: null,
+      });
+      return user;
+    });
+
     return created;
   }
 
