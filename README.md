@@ -276,6 +276,9 @@ flowchart LR
 
 If the grader rejects all retrieved articles, the query rewriter reformulates using conversation history and retries (up to 2 times). This prevents hallucinated answers when the feed has no relevant content for the question.
 
+An interactive vector diagram of this agent workflow is available at [docs/agent_chat_langgraph.excalidraw](file:///home/johnvesslyalti/johnvesslyalti_workspace/inferr/docs/agent_chat_langgraph.excalidraw).
+
+
 ## Auth Flow
 
 ```
