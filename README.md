@@ -321,6 +321,31 @@ POST /auth/logout → revoke refresh token, clear cookie
 | DELETE | `/mcp` | Bearer Token | Handle Model Context Protocol (MCP) close session request |
 
 
+## Observability
+
+Inferr integrates tracing and LLM evaluation tools to debug and monitor performance in development and production:
+
+### 1. Application Tracing (OpenTelemetry + Jaeger)
+System-wide operations (HTTP routing, database queries, and external fetches) are auto-instrumented using OpenTelemetry Node SDK ([otel.ts](file:///home/johnvesslyalti/johnvesslyalti_workspace/inferr/apps/api/src/otel.ts)):
+* **Local Jaeger UI**: Accessible at [http://localhost:16686](http://localhost:16686).
+* **Launch**: Runs automatically when starting services via `docker compose up -d` (uses port `4318` for HTTP OTLP trace exports).
+
+### 2. LLM Tracing & Evaluation (Langfuse)
+AI pipeline steps (the LangGraph RAG Agentic Chat, prompt revisions, document grading, and faithfulness evaluations) are tracked via Langfuse integration:
+* **Local Langfuse Dashboard**: Runs at [http://localhost:3010](http://localhost:3010).
+* **Launch**: Start the Langfuse PostgreSQL and web containers separately:
+  ```bash
+  docker compose -f docker-compose.langfuse.yml up -d
+  ```
+* **Configuration**: Set the keys in your `.env` file (find public/secret keys inside the local dashboard project settings):
+  ```env
+  LANGFUSE_PUBLIC_KEY=lf-pub-...
+  LANGFUSE_SECRET_KEY=lf-sec-...
+  LANGFUSE_BASE_URL=http://localhost:3010
+  ```
+
+---
+
 ## Deployment
 
 **API (Render):** Set env vars, deploy from `Dockerfile`. `DATABASE_URL` overrides the individual `DB_*` vars. A daily GitHub Actions workflow (`.github/workflows/daily-scrape.yml`) calls `POST /scraper/run` with `SCRAPER_API_KEY` — add that secret to both Render and the GitHub repo.
