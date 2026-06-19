@@ -222,3 +222,11 @@ export type NewMcpPendingAuthorization =
   typeof pendingMcpAuthorizations.$inferInsert;
 export type McpPendingAuthCode = typeof pendingAuthCodes.$inferSelect;
 export type NewMcpPendingAuthCode = typeof pendingAuthCodes.$inferInsert;
+
+export const cronLocks = pgTable('cron_locks', {
+  jobName: varchar('job_name', { length: 255 }).primaryKey(),
+  lockedAt: timestamp('locked_at').notNull().defaultNow(),
+});
+
+export type CronLock = typeof cronLocks.$inferSelect;
+export type NewCronLock = typeof cronLocks.$inferInsert;

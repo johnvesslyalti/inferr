@@ -266,8 +266,12 @@ describe('EvaluationsService (unit)', () => {
   });
 
   it('evaluateAsync logs unhandled rejection if evaluate throws', async () => {
-    const loggerSpy = jest.spyOn((service as any).logger, 'error').mockImplementation();
-    jest.spyOn(service, 'evaluate').mockRejectedValueOnce(new Error('unhandled error'));
+    const loggerSpy = jest
+      .spyOn((service as any).logger, 'error')
+      .mockImplementation();
+    jest
+      .spyOn(service, 'evaluate')
+      .mockRejectedValueOnce(new Error('unhandled error'));
 
     service.evaluateAsync(baseInput);
     await new Promise(setImmediate);
