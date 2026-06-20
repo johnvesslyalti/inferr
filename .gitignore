@@ -37,3 +37,7 @@ opencode.json
 *.tsbuildinfo
 .vercel
 !.vercel/project.json
+
+# Kubernetes Secrets
+kubernetes/secrets.yaml
+
