@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  namespace: default
+data:
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_USER: "postgres"
+  DB_NAME: "ai_feed"
+  DB_SSL: "false"
+  API_PORT: "3001"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  NODE_ENV: "production"
+  GOOGLE_CALLBACK_URL: "http://api.inferr.local/auth/google/callback"
+  GOOGLE_MCP_CALLBACK_URL: "http://api.inferr.local/auth/google/mcp-callback"
+  API_URL: "https://api.inferr.local"

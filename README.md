@@ -356,3 +356,62 @@ AI pipeline steps (the LangGraph RAG Agentic Chat, prompt revisions, document gr
 **Keeping the free-tier API warm:** Render's free instance sleeps after 15 min idle. GitHub Actions cron is too unreliable for short-interval keep-alive pings, so an external pinger ([cron-job.org](https://cron-job.org)) does a `GET https://api.inferr.xyz/health` every 10 min, restricted to hours 0–18 UTC (~06:00–24:00 IST) to stay within the 750 hr/month budget. The instance is allowed to sleep overnight; the web app's wake overlay (`apps/web/src/lib/server-status.tsx`) covers the first cold request.
 
 **Web (Vercel):** Set `NEXT_PUBLIC_API_URL` to the Render API URL. `vercel.json` at root handles the monorepo build pointing to `apps/web`.
+
+---
+
+## Kubernetes (Local Deployment)
+
+This project contains a complete, local Kubernetes deployment setup located in the [kubernetes/](file:///home/johnvesslyalti/johnvesslyalti_workspace/inferr/kubernetes/) directory. This allows you to run, manage, and test the entire backend infrastructure (NestJS API, Postgres with pgvector, Redis, migrations, and cronjobs) inside a local Kubernetes cluster.
+
+### Architecture
+![Kubernetes Architecture Diagram](docs/k8s_architecture.jpg)
+
+### Prerequisites
+* **Docker**
+* **Minikube**
+* **kubectl** & **Helm**
+
+### Launching the Cluster Locally
+1. **Start Minikube**:
+   ```bash
+   minikube start --driver=docker
+   ```
+2. **Build the API container inside Minikube**:
+   Build the NestJS API container image directly in the Minikube registry:
+   ```bash
+   minikube image build -t inferr-api:latest .
+   ```
+3. **Apply the manifests**:
+   Deploy all resources (Secrets, ConfigMaps, Postgres StatefulSet, Redis, API, and Ingress) to your cluster:
+   ```bash
+   kubectl apply -f kubernetes/
+   ```
+4. **Enable Ingress**:
+   Enable the Nginx Ingress Controller addon:
+   ```bash
+   minikube addons enable ingress
+   ```
+
+### Accessing the API
+1. Map the domain `api.inferr.local` to your Minikube IP:
+   ```bash
+   echo "$(minikube ip) api.inferr.local" | sudo tee -a /etc/hosts
+   ```
+2. Open `http://api.inferr.local/health` in your browser. You should receive:
+   ```json
+   { "status": "ok" }
+   ```
+
+### Managing the Pipeline
+* **Trigger the daily scraper manually**:
+  ```bash
+  kubectl create job --from=cronjob/scraper-cronjob scraper-manual-run
+  ```
+* **View the scraper logs**:
+  ```bash
+  kubectl logs -f -l job-name=scraper-manual-run
+  ```
+* **Verify Pod status**:
+  ```bash
+  kubectl get pods
+  ```
