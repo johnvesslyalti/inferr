@@ -5,7 +5,7 @@ import { AuthModule } from '../auth/auth.module';
 import { AiModule } from '../ai/ai.module';
 
 @Module({
-  imports: [forwardRef(() => AuthModule), AiModule],
+  imports: [forwardRef(() => AuthModule), forwardRef(() => AiModule)],
   providers: [UsersService],
   controllers: [UsersController],
   exports: [UsersService],
