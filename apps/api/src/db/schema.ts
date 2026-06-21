@@ -17,13 +17,16 @@ const vector = (name: string, dimensions: number) =>
     dataType() {
       return `vector(${dimensions})`;
     },
-    toDriver(value: number[]): string {
+    toDriver(value: number[] | null): string {
+      if (!value || value.length === 0) return '';
       return `[${value.join(',')}]`;
     },
-    fromDriver(value: string): number[] {
+    fromDriver(value: string | null): number[] {
+      if (!value) return [];
       return value.slice(1, -1).split(',').map(Number);
     },
   })(name);
+
 
 export const users = pgTable(
   'users',
