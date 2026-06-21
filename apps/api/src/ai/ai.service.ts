@@ -13,9 +13,14 @@ export class AiService {
   private readonly client: OpenAI;
 
   constructor(@Inject(DRIZZLE) private db: DrizzleDB) {
-    this.client = observeOpenAI(
-      new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
-    );
+    const rawClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    if (process.env.LANGFUSE_PUBLIC_KEY && process.env.LANGFUSE_SECRET_KEY) {
+      this.logger.log('Wrapping OpenAI client with Langfuse observer.');
+      this.client = observeOpenAI(rawClient);
+    } else {
+      this.logger.log('Using raw OpenAI client (Langfuse disabled/keys missing).');
+      this.client = rawClient;
+    }
   }
 
   async summarize(title: string, content?: string): Promise<string> {
