@@ -61,14 +61,43 @@ export class AiService {
   }
 
   async embed(text: string): Promise<number[]> {
-    const response = await this.client.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: text,
-    });
+    return this.embedWithRetry(text, 3);
+  }
 
-    const embedding = response.data[0]?.embedding;
-    if (!embedding) throw new Error('OpenAI embeddings returned no data');
-    return embedding;
+  private async embedWithRetry(
+    text: string,
+    maxAttempts: number,
+    attempt = 1,
+  ): Promise<number[]> {
+    try {
+      const response = await this.client.embeddings.create({
+        model: 'text-embedding-3-small',
+        input: text,
+      });
+      const embedding = response.data[0]?.embedding;
+      if (!embedding) throw new Error('OpenAI embeddings returned no data');
+      return embedding;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isTransient =
+        /premature close|connection error|econnreset|econnrefused|socket hang up|network/i.test(
+          msg,
+        );
+
+      if (isTransient && attempt < maxAttempts) {
+        const delayMs = Math.pow(2, attempt - 1) * 1000; // 1 s, 2 s, 4 s
+        this.logger.warn(
+          `embed() attempt ${attempt} failed (${msg}). Retrying in ${delayMs}ms…`,
+        );
+        await new Promise((r) => setTimeout(r, delayMs));
+        return this.embedWithRetry(text, maxAttempts, attempt + 1);
+      }
+
+      this.logger.error(
+        `embed() failed after ${attempt} attempt(s): ${msg}`,
+      );
+      throw err;
+    }
   }
 
   async processUnsummarized(
