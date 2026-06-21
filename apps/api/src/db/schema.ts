@@ -241,7 +241,9 @@ export const cronRuns = pgTable('cron_runs', {
   finishedAt: timestamp('finished_at'),
   status: varchar('status', { length: 20 }).notNull().default('running'), // running | success | failed
   error: text('error'),
-});
+}, (table) => [
+  index('idx_cron_runs_job_name').on(table.jobName, table.startedAt.desc()),
+]);
 
 export type CronRun = typeof cronRuns.$inferSelect;
 export type NewCronRun = typeof cronRuns.$inferInsert;

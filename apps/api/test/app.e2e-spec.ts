@@ -189,7 +189,7 @@ describe('API E2E (isolated modules)', () => {
 
     it('GET /feed requires valid JWT (from test helper) and returns feed payload', async () => {
       const { authHeader } = await getTestAuthContextForE2E();
-      const fakeFeed: FeedResponse = { hasMatches: true, articles: [{ title: 'A', summary: 's', url: 'u', source: 'hn' }], fallback: [] };
+      const fakeFeed: FeedResponse = { hasMatches: true, articles: [{ title: 'A', summary: 's', url: 'u', source: 'hn', publishedAt: new Date().toISOString(), imageUrl: null, score: 0 }], fallback: [] };
       feedService.getPersonalizedFeed.mockResolvedValue(fakeFeed);
 
       const res = await request(app.getHttpServer())
