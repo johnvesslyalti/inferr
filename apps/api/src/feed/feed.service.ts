@@ -85,12 +85,19 @@ export class FeedService {
       this.logger.log(
         `Generating embedding for user ${userId} | query: "${queryText}"`,
       );
-      embedding = await this.aiService.embed(queryText);
-      if (interestRow.length > 0) {
-        await this.db
-          .update(userInterests)
-          .set({ queryEmbedding: embedding })
-          .where(eq(userInterests.userId, userId));
+      try {
+        embedding = await this.aiService.embed(queryText);
+        if (interestRow.length > 0) {
+          await this.db
+            .update(userInterests)
+            .set({ queryEmbedding: embedding })
+            .where(eq(userInterests.userId, userId));
+        }
+      } catch (err) {
+        this.logger.error(
+          `Failed to generate embedding for user ${userId} — returning empty feed: ${err}`,
+        );
+        return { hasMatches: false, articles: [], fallback: [] };
       }
     }
 
@@ -227,12 +234,19 @@ export class FeedService {
       this.logger.log(
         `Generating embedding for user ${userId} (debug) | query: "${queryText}"`,
       );
-      embedding = await this.aiService.embed(queryText);
-      if (interestRow.length > 0) {
-        await this.db
-          .update(userInterests)
-          .set({ queryEmbedding: embedding })
-          .where(eq(userInterests.userId, userId));
+      try {
+        embedding = await this.aiService.embed(queryText);
+        if (interestRow.length > 0) {
+          await this.db
+            .update(userInterests)
+            .set({ queryEmbedding: embedding })
+            .where(eq(userInterests.userId, userId));
+        }
+      } catch (err) {
+        this.logger.error(
+          `Failed to generate embedding for user ${userId} (debug): ${err}`,
+        );
+        return { queryText, articles: [] };
       }
     }
 
