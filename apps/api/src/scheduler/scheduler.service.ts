@@ -1,17 +1,19 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { and, eq, lt } from 'drizzle-orm';
+import { and, desc, eq, lt } from 'drizzle-orm';
 import { DRIZZLE } from '../db/drizzle.provider';
 import type { DrizzleDB } from '../db/drizzle.provider';
-import { cronLocks } from '../db/schema';
+import { cronLocks, cronRuns } from '../db/schema';
 import { ScraperService } from '../scraper/scraper.service';
 import { AiService } from '../ai/ai.service';
 import { JobsService } from '../jobs/jobs.service';
 
-const SIX_HOURS_MS = 6 * 60 * 60 * 1000; // 6 hours safety TTL
+const SIX_HOURS_MS = 6 * 60 * 60 * 1000; // 6 hours safety TTL for locks
+const CATCHUP_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours — run catchup if last success was longer ago
+const MAX_RETRY_ATTEMPTS = 3;
 
 @Injectable()
-export class SchedulerService {
+export class SchedulerService implements OnApplicationBootstrap {
   private readonly logger = new Logger(SchedulerService.name);
 
   constructor(
@@ -21,65 +23,141 @@ export class SchedulerService {
     private readonly jobsService: JobsService,
   ) {}
 
-  @Cron('0 2 * * *')
-  async runDailyJobScrape() {
-    await this.runWithLock('runDailyJobScrape', SIX_HOURS_MS, async () => {
-      this.logger.log('Starting daily job scrape (02:00 UTC)');
-      try {
-        const saved = await this.jobsService.scrapeRemotive();
-        this.logger.log(`Jobs scraped: ${saved} new listings`);
+  // ──────────────────────────────────────────────
+  // Startup catchup: if a job hasn't succeeded in 24h, run it now
+  // ──────────────────────────────────────────────
+  async onApplicationBootstrap() {
+    // Small delay so the rest of the app is fully wired before we start I/O
+    setTimeout(() => void this.catchupMissedJobs(), 5_000);
+  }
 
-        // Refresh the persisted market report off the fresh data so user requests
-        // never trigger the OpenAI call synchronously.
-        const report = await this.jobsService.generateMarketReport();
-        this.logger.log(
-          `Market report refreshed: ${report.roles.length} roles`,
-        );
+  private async catchupMissedJobs(): Promise<void> {
+    const jobDefs: { name: string; runner: () => Promise<void> }[] = [
+      { name: 'runDailyScrape', runner: () => this.executeDailyScrape() },
+      { name: 'runDailyJobScrape', runner: () => this.executeDailyJobScrape() },
+    ];
+
+    for (const job of jobDefs) {
+      try {
+        const lastSuccess = await this.getLastSuccessfulRun(job.name);
+        const elapsed = lastSuccess
+          ? Date.now() - lastSuccess.getTime()
+          : Infinity;
+
+        if (elapsed > CATCHUP_THRESHOLD_MS) {
+          const ago = lastSuccess
+            ? `${(elapsed / 3_600_000).toFixed(1)}h ago`
+            : 'never';
+          this.logger.warn(
+            `Catchup: ${job.name} last succeeded ${ago} — triggering now`,
+          );
+          await this.runWithLock(job.name, SIX_HOURS_MS, job.runner);
+        } else {
+          this.logger.log(
+            `Catchup: ${job.name} last succeeded ${(elapsed / 3_600_000).toFixed(1)}h ago — OK`,
+          );
+        }
       } catch (err) {
         this.logger.error(
-          'Daily job scrape failed',
-          err instanceof Error ? err.stack : String(err),
+          `Catchup check failed for ${job.name}: ${err}`,
         );
       }
-    });
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  // Cron handlers
+  // ──────────────────────────────────────────────
+
+  @Cron('0 2 * * *')
+  async runDailyJobScrape() {
+    await this.runWithLock('runDailyJobScrape', SIX_HOURS_MS, () =>
+      this.executeDailyJobScrape(),
+    );
   }
 
   @Cron('30 1 * * *')
   async runDailyScrape() {
-    await this.runWithLock('runDailyScrape', SIX_HOURS_MS, async () => {
-      this.logger.log('Starting daily scrape pipeline (01:30 UTC)');
-
-      try {
-        const scraped = await this.scraperService.scrapeAll();
-        this.logger.log(
-          `Scraped — HN: ${scraped.hn}, Dev.to: ${scraped.devto}`,
-        );
-
-        const { processed, failed } =
-          await this.aiService.processUnsummarized(50);
-        this.logger.log(
-          `Summarized/embedded: ${processed} ok, ${failed} failed`,
-        );
-
-        const cleaned = await this.scraperService.cleanOldArticles(100);
-        this.logger.log(`Pruned database to keep only ${cleaned} articles`);
-      } catch (err) {
-        this.logger.error(
-          'Daily scrape pipeline failed',
-          err instanceof Error ? err.stack : String(err),
-        );
-      }
-    });
+    await this.runWithLock('runDailyScrape', SIX_HOURS_MS, () =>
+      this.executeDailyScrape(),
+    );
   }
 
-  /**
-   * Runs the given callback under a distributed database-backed lock.
-   * If the lock is already held by another instance and has not expired, the execution is skipped.
-   *
-   * @param jobName Unique name identifying the job
-   * @param lockTtlMs How long the lock remains valid (e.g. 6 hours) before it is considered stale
-   * @param callback The async function to execute if the lock is acquired
-   */
+  // ──────────────────────────────────────────────
+  // Job implementations (with retry)
+  // ──────────────────────────────────────────────
+
+  private async executeDailyJobScrape(): Promise<void> {
+    this.logger.log('Starting daily job scrape');
+
+    const saved = await this.withRetry('scrapeRemotive', () =>
+      this.jobsService.scrapeRemotive(),
+    );
+    this.logger.log(`Jobs scraped: ${saved} new listings`);
+
+    const report = await this.withRetry('generateMarketReport', () =>
+      this.jobsService.generateMarketReport(),
+    );
+    this.logger.log(
+      `Market report refreshed: ${report.roles.length} roles`,
+    );
+  }
+
+  private async executeDailyScrape(): Promise<void> {
+    this.logger.log('Starting daily scrape pipeline');
+
+    const scraped = await this.withRetry('scrapeAll', () =>
+      this.scraperService.scrapeAll(),
+    );
+    this.logger.log(
+      `Scraped — HN: ${scraped.hn}, Dev.to: ${scraped.devto}`,
+    );
+
+    const { processed, failed } = await this.withRetry(
+      'processUnsummarized',
+      () => this.aiService.processUnsummarized(50),
+    );
+    this.logger.log(
+      `Summarized/embedded: ${processed} ok, ${failed} failed`,
+    );
+
+    const cleaned = await this.withRetry('cleanOldArticles', () =>
+      this.scraperService.cleanOldArticles(100),
+    );
+    this.logger.log(`Pruned database to keep only ${cleaned} articles`);
+  }
+
+  // ──────────────────────────────────────────────
+  // Retry helper — exponential backoff (2s, 4s, 8s)
+  // ──────────────────────────────────────────────
+
+  private async withRetry<T>(
+    stepName: string,
+    fn: () => Promise<T>,
+    attempt = 1,
+  ): Promise<T> {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt >= MAX_RETRY_ATTEMPTS) {
+        this.logger.error(
+          `Step "${stepName}" failed after ${attempt} attempt(s): ${err}`,
+        );
+        throw err;
+      }
+      const delayMs = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+      this.logger.warn(
+        `Step "${stepName}" attempt ${attempt} failed (${err instanceof Error ? err.message : err}). Retrying in ${delayMs}ms…`,
+      );
+      await new Promise((r) => setTimeout(r, delayMs));
+      return this.withRetry(stepName, fn, attempt + 1);
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  // Distributed lock + audit logging
+  // ──────────────────────────────────────────────
+
   private async runWithLock(
     jobName: string,
     lockTtlMs: number,
@@ -116,10 +194,37 @@ export class SchedulerService {
       return;
     }
 
-    // 3. Execute the job and clean up the lock afterward
+    // 3. Record the run start in cron_runs
+    const [runRow] = await this.db
+      .insert(cronRuns)
+      .values({ jobName, status: 'running' })
+      .returning({ id: cronRuns.id });
+
+    // 4. Execute the job and record outcome
     try {
       await callback();
+
+      // Mark success
+      await this.db
+        .update(cronRuns)
+        .set({ finishedAt: new Date(), status: 'success' })
+        .where(eq(cronRuns.id, runRow.id));
+
+      this.logger.log(`Job ${jobName} completed successfully`);
+    } catch (err) {
+      // Mark failure with error message
+      const errorMsg = err instanceof Error ? err.stack ?? err.message : String(err);
+      await this.db
+        .update(cronRuns)
+        .set({ finishedAt: new Date(), status: 'failed', error: errorMsg })
+        .where(eq(cronRuns.id, runRow.id));
+
+      this.logger.error(
+        `Job ${jobName} failed`,
+        err instanceof Error ? err.stack : String(err),
+      );
     } finally {
+      // 5. Release the lock
       try {
         await this.db.delete(cronLocks).where(eq(cronLocks.jobName, jobName));
         this.logger.log(`Released lock for job: ${jobName}`);
@@ -130,5 +235,22 @@ export class SchedulerService {
         );
       }
     }
+  }
+
+  // ──────────────────────────────────────────────
+  // Helpers
+  // ──────────────────────────────────────────────
+
+  private async getLastSuccessfulRun(jobName: string): Promise<Date | null> {
+    const [row] = await this.db
+      .select({ finishedAt: cronRuns.finishedAt })
+      .from(cronRuns)
+      .where(
+        and(eq(cronRuns.jobName, jobName), eq(cronRuns.status, 'success')),
+      )
+      .orderBy(desc(cronRuns.finishedAt))
+      .limit(1);
+
+    return row?.finishedAt ?? null;
   }
 }

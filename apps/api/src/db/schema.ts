@@ -233,3 +233,15 @@ export const cronLocks = pgTable('cron_locks', {
 
 export type CronLock = typeof cronLocks.$inferSelect;
 export type NewCronLock = typeof cronLocks.$inferInsert;
+
+export const cronRuns = pgTable('cron_runs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  jobName: varchar('job_name', { length: 255 }).notNull(),
+  startedAt: timestamp('started_at').notNull().defaultNow(),
+  finishedAt: timestamp('finished_at'),
+  status: varchar('status', { length: 20 }).notNull().default('running'), // running | success | failed
+  error: text('error'),
+});
+
+export type CronRun = typeof cronRuns.$inferSelect;
+export type NewCronRun = typeof cronRuns.$inferInsert;
