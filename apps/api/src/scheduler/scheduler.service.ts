@@ -1,4 +1,9 @@
-import { Inject, Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  OnApplicationBootstrap,
+} from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { and, desc, eq, lt } from 'drizzle-orm';
 import { DRIZZLE } from '../db/drizzle.provider';
@@ -26,7 +31,7 @@ export class SchedulerService implements OnApplicationBootstrap {
   // ──────────────────────────────────────────────
   // Startup catchup: if a job hasn't succeeded in 24h, run it now
   // ──────────────────────────────────────────────
-  async onApplicationBootstrap() {
+  onApplicationBootstrap() {
     // Small delay so the rest of the app is fully wired before we start I/O
     setTimeout(() => void this.catchupMissedJobs(), 5_000);
   }
@@ -58,9 +63,7 @@ export class SchedulerService implements OnApplicationBootstrap {
           );
         }
       } catch (err) {
-        this.logger.error(
-          `Catchup check failed for ${job.name}: ${err}`,
-        );
+        this.logger.error(`Catchup check failed for ${job.name}: ${err}`);
       }
     }
   }
@@ -98,9 +101,7 @@ export class SchedulerService implements OnApplicationBootstrap {
     const report = await this.withRetry('generateMarketReport', () =>
       this.jobsService.generateMarketReport(),
     );
-    this.logger.log(
-      `Market report refreshed: ${report.roles.length} roles`,
-    );
+    this.logger.log(`Market report refreshed: ${report.roles.length} roles`);
   }
 
   private async executeDailyScrape(): Promise<void> {
@@ -109,17 +110,13 @@ export class SchedulerService implements OnApplicationBootstrap {
     const scraped = await this.withRetry('scrapeAll', () =>
       this.scraperService.scrapeAll(),
     );
-    this.logger.log(
-      `Scraped — HN: ${scraped.hn}, Dev.to: ${scraped.devto}`,
-    );
+    this.logger.log(`Scraped — HN: ${scraped.hn}, Dev.to: ${scraped.devto}`);
 
     const { processed, failed } = await this.withRetry(
       'processUnsummarized',
       () => this.aiService.processUnsummarized(50),
     );
-    this.logger.log(
-      `Summarized/embedded: ${processed} ok, ${failed} failed`,
-    );
+    this.logger.log(`Summarized/embedded: ${processed} ok, ${failed} failed`);
 
     const cleaned = await this.withRetry('cleanOldArticles', () =>
       this.scraperService.cleanOldArticles(100),
@@ -213,7 +210,8 @@ export class SchedulerService implements OnApplicationBootstrap {
       this.logger.log(`Job ${jobName} completed successfully`);
     } catch (err) {
       // Mark failure with error message
-      const errorMsg = err instanceof Error ? err.stack ?? err.message : String(err);
+      const errorMsg =
+        err instanceof Error ? (err.stack ?? err.message) : String(err);
       await this.db
         .update(cronRuns)
         .set({ finishedAt: new Date(), status: 'failed', error: errorMsg })
@@ -245,9 +243,7 @@ export class SchedulerService implements OnApplicationBootstrap {
     const [row] = await this.db
       .select({ finishedAt: cronRuns.finishedAt })
       .from(cronRuns)
-      .where(
-        and(eq(cronRuns.jobName, jobName), eq(cronRuns.status, 'success')),
-      )
+      .where(and(eq(cronRuns.jobName, jobName), eq(cronRuns.status, 'success')))
       .orderBy(desc(cronRuns.finishedAt))
       .limit(1);
 
